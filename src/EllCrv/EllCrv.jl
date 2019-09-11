@@ -1,4 +1,16 @@
+################################################################################
+#
+#  Imports
+#
+################################################################################
+
 import AbstractAlgebra
+
+################################################################################
+#
+#  Exports
+#
+################################################################################
 
 export EllCrv, EllCrvPt, EllCrvDivisor
 
@@ -86,21 +98,25 @@ mutable struct EllCrv{T}
 end
 
 mutable struct EllCrvPt{T}
-    coordx::T 
-    coordy::T
+    # Presumes we have projective coordinates P := [X:Y:Z]
+    # for the elliptic curve points P.
+    projcoordx::T 
+    projcoordy::T
+    projcoordz::T
     is_inifinite::Bool
     parent::EllCrv{T}
 
-    function EllCrvPt{T}(E::EllCrv{T}, coords::Array{T, 1}, check::Bool = true) where {T}
+    function EllCrvPt{T}(E::EllCrv{T}, coords::Array{T, 1}, 
+        check::Bool = true) where {T}
         if check
             if is_on_curve(E, coords)
-                P = new{T}(coords[1], coords[2], false, E)
+                P = new{T}(coords[1], coords[2], coords[3], false, E)
                 return P 
             else
                 error("Point is not on curve.")
             end
         else
-            P = new{T}(coords[1], coords[2], false, E)
+            P = new{T}(coords[1], coords[2], coords[3], false, E)
             return P 
         end
     end
@@ -123,8 +139,8 @@ mutable struct EllCrvDivisor{T, P_1,...,P_s}
     is_associated::Bool
     is_effective::Bool
 
-    function EllCrvDivisor{T, P_1,...,P_s}(rat::AbstractAlgebra.FieldElem, coeffs::Array{T, 1}, 
-        check::Bool = true) where {T, P_1,...,P_s}
+    function EllCrvDivisor{T, P_1,...,P_s}(rat::AbstractAlgebra.FieldElem, 
+        coeffs::Array{T, 1}, check::Bool = true) where {T, P_1,...,P_s}
         if check
             if is_rational(rat, coeffs)
                 ECD = new(){T, P_1,...,P_s}

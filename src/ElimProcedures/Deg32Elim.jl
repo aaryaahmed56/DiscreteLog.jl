@@ -62,31 +62,9 @@ function verify(prime::UInt64)
 
         
         # Instantiate Elliptic Curve.
-        EllCrvWeier::EllCrv = EllCrvWeier
+        EllCrvWeier::EllCrv{T} = EllCrvWeier
         
         
     end
     
-end
-
-# Add two points P, Q with projective coordinates
-# P := [P[1]:P[2]:P[3]], Q := [Q[1]:Q[2]:Q[3]] 
-function add(P::EllCrvPt, Q::EllCrvPt, A)
-    x1 = (P[1])/(P[3])
-    y1 = (P[2])/(P[3])
-    x2 = (Q[1])/(Q[3])
-    y2 = (Q[2])/(Q[3])
-
-    X = x1 + x2
-    Y = y1 + y2
-
-    x3 = X + A + Y/X + (y1^2 + y2^2)/(x1^2 + x2^2)
-    y3 = y1 + x3 + (x1 + x3)*Y/X
-
-    g = gcd(Denominator(x3), Denominator(y3))
-
-    return [(Numerator(x3)*Denominator(y3)) div g, 
-    (Numerator(x3)*Denominator(x3)) div g, 
-    (Denominator(x3)*Denominator(y3)) div g]
-
 end

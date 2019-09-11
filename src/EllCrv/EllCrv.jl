@@ -51,10 +51,9 @@ import AbstractAlgebra
 
 export EllCrv, EllCrvPt, EllCrvDivisor
 
-export base_field, discriminant, division_polynomial, EllipticCurve, infinity,
-    is_inifinite, isshort, is_on_curve, j_invariant, Psi_polynomial, is_rational,
+export base_field, discriminant, EllipticCurve, infinity, is_inifinite, 
+    is_short, is_on_curve, j_invariant, Psi_polynomial, is_rational, 
     psi_poly_field, short_weierstrass_model, +, ×
-
 
 ################################################################################
 #
@@ -72,8 +71,8 @@ mutable struct EllCrv{T}
     discriminant::T
     j::T
 
-    torsion_points::Array{EllCrvPt, 1}
-    torsion_structure::Tuple{Array{Int, 1}, Array{EllCrvPt, 1}}
+    torsion_points#::Array{EllCrvPt{T}, 1}
+    torsion_structure#::Tuple{Array{Int, 1}, Array{EllCrvPt{T}, 1}}
 
     function EllCrv{T}(coeffs::Array{T, 1}, check::Bool= true) where {T}
         if length(coeffs) == 2
@@ -135,8 +134,10 @@ mutable struct EllCrv{T}
 end
 
 mutable struct EllCrvPt{T}
-    # Presumes we have projective coordinates P := [X:Y:Z]
-    # for the elliptic curve points P.
+    # Accommodates affine as well as projective
+    # coordinates for any point P on the elliptic curve.
+    affcoordx::T
+    affcoordy::T
     projcoordx::T 
     projcoordy::T
     projcoordz::T
@@ -147,14 +148,19 @@ mutable struct EllCrvPt{T}
         check::Bool = true) where {T}
         if check
             if is_on_curve(E, coords)
-                P = new{T}(coords[1], coords[2], coords[3], false, E)
-                return P 
+                if length(coords) < 2
+                    error("Point must have at least two coordinates.")
+                elseif length(coords) == 2
+                    # Point is presumed to have affine oords.
+                    P = new{T}(coords[1], coords[2], false, E)
+                    return P
+                elseif length(coords) == 3
+                    # Point is presumed to have projective coords.
+                    P = new{T}(coords[1], coords[2], coords[3], false, E)
+                    return P 
             else
                 error("Point is not on curve.")
             end
-        else
-            P = new{T}(coords[1], coords[2], coords[3], false, E)
-            return P 
         end
     end
 
@@ -177,12 +183,192 @@ mutable struct EllCrvDivisor{T, P_1,...,P_s}
     is_effective::Bool
 
     function EllCrvDivisor{T, P_1,...,P_s}(rat::AbstractAlgebra.FieldElem, 
-        coeffs::Array{T, 1}, check::Bool = true) where {T, P_1,...,P_s}
+        coeffs::Array{T, 1}, points::Tuple{P_1::EllCrvPt{T},...,P_s::EllCrvPt{T}}, 
+        check::Bool = true) where {T, P_1,...,P_s}
         if check
             if is_rational(rat, coeffs)
-                ECD = new(){T, P_1,...,P_s}
+                ECD = new{T, P_1,...,P_s}()
                 ECD.is_associated = true
             end
         end
     end
+end
+
+################################################################################
+#
+#  Constructors for users
+#
+################################################################################
+
+function EllipticCurve(x::Array{T, 1}, check::Bool = true) where T
+    E = EllCrv{T}(x, check)
+    return E
+end
+
+function(E::EllCrv{T})(coords::Array{S, 1}, check::Bool = true) where {S, T}
+    if length(coords) < 2
+        error("Need at least two coordinates.")
+    elseif length(coords) == 2
+        print("Point is affine.")
+    elseif length(coords) == 3
+        print("Point is homogeneous.")
+    end
+
+    if S == T
+        parent(coords[1]) != base_field(E) &&
+            error("The elliptic curve and the point must be defined over the same 
+            field.")
+            return EllCrvPt{T}(E, coords, check)
+    else
+        return EllCrvPt{T}(E, map(base_field(E), coords), check)
+    end
+end
+
+#function EllipticCurveDiv(x::Array{T}, y::Tuple{P_1,...,P_s}, check::Bool = true) 
+#    where {P_1,...,P_s, T}
+#    EDiv = EllCrvDivisor{T, P_1,...,P_s, check}
+#    return EDiv
+#end
+
+################################################################################
+#
+#  Field access
+#
+################################################################################
+
+function base_field(E::EllCrv{T}) where T
+    return E.base_field::parent_type(T)
+end
+
+function Base.deepcopy_internal(E::EllCrv, dict::IdDict)
+    return EllipticCurve(E.coeff)
+end
+
+function parent(P::EllCrvPt)
+    return P.parent
+end
+
+function is_finite(P::EllCrvPt)
+    return !P.is_inifinite
+end
+
+function is_infinite(P::EllCrvPt)
+    return P.is_infinite
+end
+
+function is_short(E::EllCrv)
+    return E.short
+end
+
+function a
+
+
+################################################################################
+#
+#  Addition of Points
+#
+################################################################################
+
+# washington p. 14, cohen p. 270
+@doc Markdown.doc"""
+    +(P::EllCrvPt, Q::EllCrvPt) -> EllCrvPt
+Adds two points on an elliptic curve.
+does not work in characteristic 2
+"""
+
+# Add two points P, Q with projective coordinates
+# P := [P[1]:P[2]:P[3]], Q := [Q[1]:Q[2]:Q[3]] 
+function +(P::EllCrvPt{T}, Q::EllCrvPt{T}) where T
+    parent(P) != parent(Q) && error("Points must be on the same curve.")
+
+    characteristic(base_field(parent(P))) == 2 &&
+        error("Choose a characteristic for the field that is 
+        at least >= 2.")
+
+      # Is P = infinity or Q = infinity?
+    if P.is_infinite
+        return Q
+    elseif Q.is_infinite
+        return P
+    end
+
+    E = P.parent
+
+    x1 = (P.projcoordx)/(P.projcoordz)
+    y1 = (P.projcoordy)/(P.projcoordz)
+    x2 = (Q.projcoordx)/(Q.projcoordz)
+    y2 = (Q.projcoordy)/(Q.projcoordz)
+
+    X = x1 + x2
+    Y = y1 + y2
+
+    x3 = X + A + Y/X + (y1^2 + y2^2)/(x1^2 + x2^2)
+    y3 = y1 + x3 + (x1 + x3)*Y/X
+
+    g = gcd(Denominator(x3), Denominator(y3))
+
+    return [(Numerator(x3)*Denominator(y3)) div g, 
+    (Numerator(x3)*Denominator(x3)) div g, 
+    (Denominator(x3)*Denominator(y3)) div g]
+
+end
+
+function +(P::EllCrvPt{T}, Q::EllCrvPt{T}) where T
+  parent(P) != parent(Q) && error("Points must live on the same curve")
+
+  characteristic(base_field(parent(P))) == 2 &&
+      error("Not yet implemented in characteristic 2")
+
+
+
+  E = P.parent
+
+  # Distinguish between long and short form
+  if E.short == true
+    if P.coordx != Q.coordx
+        m = divexact(Q.coordy - P.coordy, Q.coordx - P.coordx)
+        x = m^2 - P.coordx - Q.coordx
+        y = m * (P.coordx - x) - P.coordy
+    elseif P.coordy != Q.coordy
+        return infinity(E)
+    elseif P.coordy != 0
+        m = divexact(3*(P.coordx)^2 + (E.coeff[1]), 2*P.coordy)
+        x = m^2 - 2*P.coordx
+        y = m* (P.coordx - x) - P.coordy
+    else
+        return infinity(E)
+    end
+
+    Erg = E([x, y], false)
+
+  else
+    a1 = E.coeff[1]
+    a2 = E.coeff[2]
+    a3 = E.coeff[3]
+    a4 = E.coeff[4]
+    a6 = E.coeff[5]
+
+    # Use [Cohen, p. 270]
+    if P.coordx == Q.coordx
+      if Q.coordy == -a1*P.coordx - a3 - P.coordy # then P = -Q
+        return infinity(E)
+      elseif P.coordy == Q.coordy # then P = Q
+        m = divexact(3*((P.coordx)^2) + 2*a2*P.coordx + a4 - a1*P.coordy, 2*P.coordy + a1*P.coordx + a3)
+        x = -P.coordx - Q.coordx - a2 + a1*m + m^2
+        y = -P.coordy - m*(x - P.coordx) - a1*x - a3
+      else # then P != +-Q
+        m = divexact(Q.coordy - P.coordy, Q.coordx - P.coordx)
+        x = -P.coordx - Q.coordx - a2 + a1*m + m^2
+        y = -P.coordy - m*(x - P.coordx) - a1*x - a3
+      end
+    else # now P != +-Q
+      m = divexact(Q.coordy - P.coordy, Q.coordx - P.coordx)
+      x = -P.coordx - Q.coordx - a2 + a1*m + m^2
+      y = -P.coordy - m*(x - P.coordx) - a1*x - a3
+    end
+
+    Erg = E([x, y], false)
+
+  end
+  return Erg
 end

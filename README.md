@@ -10,8 +10,9 @@ degree 3-to-4 procedures from:
 https://eprint.iacr.org/2019/751.pdf
 
 Implements general as well as finite field elliptic curve homogeneous 
-point arithmetic, divisors on elliptic curves (associated et al.) and 
-models of elliptic curves with a specific divisor and points on them 
+point arithmetic, divisors on elliptic curves (divisors associated 
+to rational functions on the curve et al.), as well as models of 
+elliptic curves with a specific divisor and points on them 
 of a fixed degree.
 
 ## Dependencies

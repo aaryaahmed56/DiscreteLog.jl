@@ -1,3 +1,0 @@
-import AbstractAlgebra
-
-export Divisor

@@ -1,7 +1,9 @@
-export EllCrv, EllCrvPt
+import AbstractAlgebra
+
+export EllCrv, EllCrvPt, EllCrvDivisor
 
 export base_field, discriminant, division_polynomial, EllipticCurve, infinity,
-    isinifinite, isshort, isoncurve, j_invariant, Psi_polynomial,
+    is_inifinite, isshort, is_on_curve, j_invariant, Psi_polynomial, is_rational,
     psi_poly_field, short_weierstrass_model, +, ×
 
 
@@ -86,12 +88,12 @@ end
 mutable struct EllCrvPt{T}
     coordx::T 
     coordy::T
-    isinifinite::Bool
+    is_inifinite::Bool
     parent::EllCrv{T}
 
     function EllCrvPt{T}(E::EllCrv{T}, coords::Array{T, 1}, check::Bool = true) where {T}
         if check
-            if ison_curve(E, coords)
+            if is_on_curve(E, coords)
                 P = new{T}(coords[1], coords[2], false, E)
                 return P 
             else
@@ -106,7 +108,28 @@ mutable struct EllCrvPt{T}
     function EllCrvPt{T}(E::EllCrv{T}) where {T}
         z = new{T}()
         z.parent = E 
-        z.isinifinite = true
+        z.is_inifinite = true
         return z
+    end
+end
+
+mutable struct EllCrvDivisor{T, P_1,...,P_s}
+    coeff::Array{T, 1}
+    s = length(coeff)
+    points::Tuple{P_1::EllCrvPt{T},...,P_s::EllCrvPt{T}}
+    func_field_without_zero::AbstractAlgebra.Field
+    rat_func::AbstractAlgebra.FieldElem ∈ func_field_without_zero
+    degree::Int
+    is_associated::Bool
+    is_effective::Bool
+
+    function EllCrvDivisor{T, P_1,...,P_s}(rat::AbstractAlgebra.FieldElem, coeffs::Array{T, 1}, 
+        check::Bool = true) where {T, P_1,...,P_s}
+        if check
+            if is_rational(rat, coeffs)
+                ECD = new(){T, P_1,...,P_s}
+                ECD.is_associated = true
+            end
+        end
     end
 end

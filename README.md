@@ -1,3 +1,7 @@
+<p align="center">
+    <img src="./docs/src/assets/logo.png" alt="DiscreteLog.jl" />
+    </p>
+
 # DiscreteLog.jl
 
 Julia package for the degree 2-to-3 and degree 3-to-4 procedures from:
@@ -10,4 +14,4 @@ curves with a specific divisor and points on them of a
 fixed degree.
 
 ## Dependencies
-`AbstractAlgebra.jl`
+[AbstractAlgebra.jl](https://github.com/wbhart/AbstractAlgebra.jl)

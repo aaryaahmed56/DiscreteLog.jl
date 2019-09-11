@@ -4,7 +4,7 @@
 
 # DiscreteLog.jl
 
-Julia package for the degree 2-to-3 and degree 3-to-4 procedures from:
+A work-in-progress julia package for the degree 2-to-3 and degree 3-to-4 procedures from:
 
 https://eprint.iacr.org/2019/751.pdf
 

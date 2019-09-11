@@ -9,7 +9,8 @@ degree 4-to-3 procedures from:
 
 https://eprint.iacr.org/2019/751.pdf
 
-In addition, this aims to implement general as well as finite field 
+In addition, in the vein of [Hecke.jl](https://github.com/thofma/Hecke.jl), 
+this aims to implement general as well as finite field 
 elliptic curve homogeneous point arithmetic, as well as abstract types 
 for divisors on elliptic curves up to linear equivalence (e.g. 
 divisors associated to rational functions on the curve et al.), 

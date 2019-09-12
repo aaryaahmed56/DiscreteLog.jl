@@ -40,8 +40,9 @@ end
 #
 ################################################################################
 
-include("ElimProcedures/Deg23Elim.jl")
+include("ElimProcedures/Deg32Elim.jl")
 include("ElimProcedures/Deg43Elim.jl")
 include("EllCrv/EllCrv.jl")
-include("EllCrv/Fields.jl")
-include("EllCrvModel/EllCrvModel.jl")
+include("EllCrv/EllCrvDiv.jl")
+include("EllCrv/EllCrvModel.jl")
+include("EllCrv/FieldsRings.jl")

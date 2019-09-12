@@ -57,7 +57,7 @@ export base_field, discriminant, EllipticCurve, infinity, is_inifinite,
 
 ################################################################################
 #
-#  Types
+#  Abstract Types/Structs
 #
 ################################################################################
 
@@ -75,6 +75,9 @@ mutable struct EllCrv{T}
     torsion_structure#::Tuple{Array{Int, 1}, Array{EllCrvPt{T}, 1}}
 
     function EllCrv{T}(coeffs::Array{T, 1}, check::Bool= true) where {T}
+        
+        # Short (Weierstrass) form of the elliptic curve,
+        # i.e. y^2 = x^3 + ax + b.
         if length(coeffs) == 2
             if check
                 disc = 4*coeffs[1]^3 + 27*coeffs[2]^2
@@ -133,6 +136,14 @@ mutable struct EllCrv{T}
     end
 end
 
+#function isin(a, F::AbstractAlgebra.FieldElem{T}) where 
+#    {T <: AbstractAlgebra.FieldElem}
+#  iszero(a) && return true
+#  F.comp || (!isone(gcd(denominator(a), prime(L))) && return false)
+#  F.comp && ppio(denominator(a), prime(L))[1] != denominator(a.data) && return false
+#  return true
+#end
+
 mutable struct EllCrvPt{T}
     # Accommodates affine as well as projective
     # coordinates for any point P on the elliptic curve.
@@ -164,11 +175,12 @@ mutable struct EllCrvPt{T}
         end
     end
 
-    function EllCrvPt{T}(E::EllCrv{T}) where {T}
-        z = new{T}()
-        z.parent = E 
-        z.is_inifinite = true
-        return z
+        function EllCrvPt{T}(E::EllCrv{T}) where {T}
+            z = new{T}()
+            z.parent = E 
+            z.is_inifinite = true
+            return z
+        end
     end
 end
 
@@ -186,10 +198,9 @@ mutable struct EllCrvDivisor{T, P_1,...,P_s}
         coeffs::Array{T, 1}, points::Tuple{P_1::EllCrvPt{T},...,P_s::EllCrvPt{T}}, 
         check::Bool = true) where {T, P_1,...,P_s}
         if check
-            if is_rational(rat, coeffs)
+            # if is_rational(rat, coeffs)
                 ECD = new{T, P_1,...,P_s}()
                 ECD.is_associated = true
-            end
         end
     end
 end
@@ -232,7 +243,15 @@ end
 
 ################################################################################
 #
-#  Field access
+#  Parent
+#
+################################################################################
+
+parent_type(::Type{AbstractAlgebra.FieldElem{T}}) where T
+
+################################################################################
+#
+#  Field access/ Field division
 #
 ################################################################################
 
@@ -260,8 +279,187 @@ function is_short(E::EllCrv)
     return E.short
 end
 
-function a
+function a_invars(E::EllCrv)
+  if isdefined(E, :a_invars)
+    return [ deepcopy(z) for z in E.a_invars ]
+  else
+    t = (E.coeff[1], E.coeff[2], E.coeff[3], E.coeff[4], E.coeff[5])
+    E.a_invars = t
+    return t
+  end
+end
 
+function b_invars(E::EllCrv)
+  if isdefined(E, :long_b)
+    # fixed on Nemo master
+    return deepcopy(E.b_invars)
+  else
+    a1 = E.coeff[1]
+    a2 = E.coeff[2]
+    a3 = E.coeff[3]
+    a4 = E.coeff[4]
+    a6 = E.coeff[5]
+
+    b2 = a1^2 + 4*a2
+    b4 = a1*a3 + 2*a4
+    b6 = a3^2 + 4*a6
+    b8 = a1^2*a6 - a1*a3*a4 + 4*a2*a6 + a2*a3^2 - a4^2
+
+    E.b_invars = (b2, b4, b6, b8)
+    return (b2, b4, b6, b8)
+  end
+end
+
+###############################################################################
+#
+#   Basic Field Data, Quotients in Fields
+#
+###############################################################################
+
+data(a::AbstractAlgebra.FieldElem) = a.data
+
+numerator(a::AbstractAlgebra.FieldElem{T}) where 
+{T <: AbstractAlgebra.FieldElement} = numerator(data(a))
+
+denominator(a::AbstractAlgebra.FieldElem{T}) where 
+{T <: AbstractAlgebra.FieldElem} = denominator(data(a))
+
+prime(L::AbstractAlgebra.Field) = L.prime
+
+
+################################################################################
+#
+#  Point at infinity
+#
+################################################################################
+
+@doc Markdown.doc"""
+    infinity(E::EllCrv) -> EllCrvPt
+
+Creates the point at infinity.
+"""
+function infinity(E::EllCrv{T}) where T
+  infi = EllCrvPt{T}(E)
+  return infi
+end
+
+
+################################################################################
+#
+#  Test for inclusion
+#
+################################################################################
+
+@doc Markdown.doc"""
+    is_on_curve(E::EllCrv{T}, coords::Array{T, 1}) -> Bool
+
+Returns true if `coords` defines a point  on E and false otherwise. The array
+`coords` must have length 2.
+"""
+function is_on_curve(E::EllCrv{T}, coords::Array{T, 1}) where T
+  length(coords) != 2 && error("Array must be of length 2")
+
+  x = coords[1]
+  y = coords[2]
+
+  if E.short == true
+    if y^2 == x^3 + (E.coeff[1])*x + (E.coeff[2])
+      return true
+    else
+      return false
+    end
+  else
+    if (y^2 + (E.coeff[1])*x*y + (E.coeff[3])*y ==
+            x^3 + (E.coeff[2])*x^2+(E.coeff[4])*x + (E.coeff[5]))
+      return true
+    else
+      return false
+    end
+  end
+end
+
+################################################################################
+#
+#  Discriminant
+#
+################################################################################
+
+@doc Markdown.doc"""
+    disc(E::EllCrv{T}) -> T
+
+Computes the discriminant of $E$.
+"""
+function disc(E::EllCrv{T}) where T
+  if isdefined(E, :disc)
+    return E.disc
+  end
+
+  if E.short == true
+    # fall back to the formula for the long form
+    # this should be done in a more clever way
+    R = base_field(E)
+    F = EllipticCurve([R(0), R(0), R(0), E.coeff[1], E.coeff[2]])
+    d = disc(F)
+    E.disc = d
+    return d::T
+  else
+    a1 = E.coeff[1]
+    a2 = E.coeff[2]
+    a3 = E.coeff[3]
+    a4 = E.coeff[4]
+    a6 = E.coeff[5]
+
+    (b2, b4, b6, b8) = b_invars(E)
+
+    d = -b2^2*b8 - 8*b4^3 - 27*b6^2 + 9*b2*b4*b6
+    E.disc = d
+    return d::T
+  end
+end
+
+################################################################################
+#
+#  j-invariant
+#
+################################################################################
+
+# p. 46 Washington, p. 72 Cohen
+@doc Markdown.doc"""
+    j(E::EllCrv{T}) -> T
+Computes the j-invariant of $E$.
+"""
+function j_invariant(E::EllCrv{T}) where T
+  if isdefined(E, :j)
+    return E.j
+  end
+
+  if E.short == true
+
+    R = base_field(E)
+    F = EllipticCurve([R(0), R(0), R(0), E.coeff[1], E.coeff[2]])
+    j = j_invariant(F)
+    E.j = j
+    return j::T
+  else
+    a1 = E.coeff[1]
+    a2 = E.coeff[2]
+    a3 = E.coeff[3]
+    a4 = E.coeff[4]
+    a6 = E.coeff[5]
+
+    (b2, b4, b6, b8) = b_invars(E)
+    #b2 = a1^2 + 4*a2
+    #b4 = a1*a3 + 2*a4
+    #b6 = a3^2 + 4*a6
+    #b8 = a1^2*a6 - a1*a3*a4 + 4*a2*a6 + a2*a3^2 - a4^2
+
+    c4 = b2^2 - 24*b4
+
+    j = divexact(c4^3, disc(E))
+    E.j = j
+    return j::T
+  end
+end
 
 ################################################################################
 #
@@ -271,104 +469,101 @@ function a
 
 # washington p. 14, cohen p. 270
 @doc Markdown.doc"""
-    +(P::EllCrvPt, Q::EllCrvPt) -> EllCrvPt
-Adds two points on an elliptic curve.
-does not work in characteristic 2
+    +(P::EllCrvPt, Q::EllCrvPt, coords::Array) -> EllCrvPt
+Adds two points on an elliptic curve, whether affine 
+or projective, or in the former case, whether in short 
+Weierstrass form or long form.
+
+**does not work in characteristic 2
 """
 
 # Add two points P, Q with projective coordinates
-# P := [P[1]:P[2]:P[3]], Q := [Q[1]:Q[2]:Q[3]] 
-function +(P::EllCrvPt{T}, Q::EllCrvPt{T}) where T
+# P := [P[1]:P[2]:P[3]], Q := [Q[1]:Q[2]:Q[3]] or 
+# affine coordinates P:= (P[1], P[2]), Q := (Q[1], Q[2]) 
+function +(P::EllCrvPt{T}, Q::EllCrvPt{T}, coords::Array{T, 1}) where T
     parent(P) != parent(Q) && error("Points must be on the same curve.")
 
-    characteristic(base_field(parent(P))) == 2 &&
-        error("Choose a characteristic for the field that is 
-        at least >= 2.")
+    # characteristic(base_field(parent(P))) == 2 &&
+    #    error("Choose a characteristic for the field that is 
+    #    at least >= 2.")
 
-      # Is P = infinity or Q = infinity?
-    if P.is_infinite
-        return Q
-    elseif Q.is_infinite
-        return P
+    if length(coords == 2)
+        # Is either P or Q the point at infinity?
+        if P.is_infinite
+            return Q
+        elseif Q.is_infinite
+            return P
+        end
+
+        E = P.parent
+        
+        # Distinguish between long and short form with affine coordinates
+        if E.short == true
+            if P.affcoordx !=  Q.affcoordx
+                m = divexact(Q.affcoordy - P.affcoordy, Q.affcoordx - P.affcoordx)
+                x = m^2 - P.affcoordx - Q.affcoordx
+                y = m*(P.affcoordx - x) - P.affcoordy
+            elseif P.affcoordy != Q.affcoordy
+                return infinity(E)
+            elseif P.coordy != 0
+                m = divexact(3*(P.affcoordx)^2 + (E.coeff[1]), 2*P.affcoordy)
+                x = m^2 - 2*P.affcoordx
+                y = m*(P.affcoordx - x) - P.affcoordy
+            else
+                return infinity(E)
+            end
+
+            Erg = E([x, y], false)
+
+        else
+            a1 = E.coeff[1]
+            a2 = E.coeff[2]
+            a3 = E.coeff[3]
+            a4 = E.coeff[4]
+            a6 = E.coeff[5]
+
+            # Use [Cohen, p. 270]
+            if P.affcoordx == Q.affcoordx
+                if Q.affcoordy == -a1*P.affcoordx - a3 - P.affcoordy
+                    return infinity(E)
+                elseif P.affcoordy == Q.affcoordy
+                    m = divexact(3*((P.affcoordx)^2) + 2*a2*P.affcoordx + a4 
+                    - a1*P.coordy, 2*P.affcoordy + a1*P.affcoordx + a3)
+                    x = -P.affcoordx - Q.affcoordx - a2 + a1*m
+                    y = -P.affcoordy - m*(x - P.affcoordx) - a1*x - a3
+                else
+                    m = divexact(Q.affcoordy - P.affcoordy, Q.affcoordx - P.affcoordx)
+                    x = -P.affcoordx - Q.affcoordx - a2 + a1*m + m^2
+                    y = -P.affcoordy - m*(x - P.affcoordx) - a1*x - a3
+                end
+            else
+                m = divexact(Q.affcoordy - P.affcoordy, Q.affcoordx - P.affcoordx)
+                x = -P.affcoordx - Q.affcoordx - a2 + a1*m + m^2
+                y = -P.affcoordy - m*(x - P.affcoordx) - a1*x - a3
+            end
+
+            Erg = E([x, y], false)
+
+        end
+        return Erg
     end
-
-    E = P.parent
-
-    x1 = (P.projcoordx)/(P.projcoordz)
-    y1 = (P.projcoordy)/(P.projcoordz)
-    x2 = (Q.projcoordx)/(Q.projcoordz)
-    y2 = (Q.projcoordy)/(Q.projcoordz)
-
-    X = x1 + x2
-    Y = y1 + y2
-
-    x3 = X + A + Y/X + (y1^2 + y2^2)/(x1^2 + x2^2)
-    y3 = y1 + x3 + (x1 + x3)*Y/X
-
-    g = gcd(Denominator(x3), Denominator(y3))
-
-    return [(Numerator(x3)*Denominator(y3)) div g, 
-    (Numerator(x3)*Denominator(x3)) div g, 
-    (Denominator(x3)*Denominator(y3)) div g]
-
 end
 
-function +(P::EllCrvPt{T}, Q::EllCrvPt{T}) where T
-  parent(P) != parent(Q) && error("Points must live on the same curve")
-
-  characteristic(base_field(parent(P))) == 2 &&
-      error("Not yet implemented in characteristic 2")
-
-
-
-  E = P.parent
-
-  # Distinguish between long and short form
-  if E.short == true
-    if P.coordx != Q.coordx
-        m = divexact(Q.coordy - P.coordy, Q.coordx - P.coordx)
-        x = m^2 - P.coordx - Q.coordx
-        y = m * (P.coordx - x) - P.coordy
-    elseif P.coordy != Q.coordy
-        return infinity(E)
-    elseif P.coordy != 0
-        m = divexact(3*(P.coordx)^2 + (E.coeff[1]), 2*P.coordy)
-        x = m^2 - 2*P.coordx
-        y = m* (P.coordx - x) - P.coordy
-    else
-        return infinity(E)
-    end
-
-    Erg = E([x, y], false)
-
-  else
-    a1 = E.coeff[1]
-    a2 = E.coeff[2]
-    a3 = E.coeff[3]
-    a4 = E.coeff[4]
-    a6 = E.coeff[5]
-
-    # Use [Cohen, p. 270]
-    if P.coordx == Q.coordx
-      if Q.coordy == -a1*P.coordx - a3 - P.coordy # then P = -Q
-        return infinity(E)
-      elseif P.coordy == Q.coordy # then P = Q
-        m = divexact(3*((P.coordx)^2) + 2*a2*P.coordx + a4 - a1*P.coordy, 2*P.coordy + a1*P.coordx + a3)
-        x = -P.coordx - Q.coordx - a2 + a1*m + m^2
-        y = -P.coordy - m*(x - P.coordx) - a1*x - a3
-      else # then P != +-Q
-        m = divexact(Q.coordy - P.coordy, Q.coordx - P.coordx)
-        x = -P.coordx - Q.coordx - a2 + a1*m + m^2
-        y = -P.coordy - m*(x - P.coordx) - a1*x - a3
-      end
-    else # now P != +-Q
-      m = divexact(Q.coordy - P.coordy, Q.coordx - P.coordx)
-      x = -P.coordx - Q.coordx - a2 + a1*m + m^2
-      y = -P.coordy - m*(x - P.coordx) - a1*x - a3
-    end
-
-    Erg = E([x, y], false)
-
-  end
-  return Erg
-end
+#    x1 = (P.projcoordx)/(P.projcoordz)
+#    y1 = (P.projcoordy)/(P.projcoordz)
+#    x2 = (Q.projcoordx)/(Q.projcoordz)
+#    y2 = (Q.projcoordy)/(Q.projcoordz)
+#
+#    X = x1 + x2
+#    Y = y1 + y2
+#
+#    x3 = X + A + Y/X + (y1^2 + y2^2)/(x1^2 + x2^2)
+#    y3 = y1 + x3 + (x1 + x3)*Y/X
+#
+#    g = gcd(denominator(x3), denominator(y3))
+#
+#    return [(numerator(x3)*denominator(y3)) div g, 
+#    (numerator(x3)*denominator(x3)) div g, 
+#    (denominator(x3)*denominator(y3)) div g]
+#
+#end

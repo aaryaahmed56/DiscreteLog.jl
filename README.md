@@ -18,7 +18,7 @@ for models of elliptic curves with a specific divisor and points on them of a
 fixed degree.
 
 A future goal is to broaden the scope of the library to be a comprehensive 
-collection of recent cryptographic results in group law computations of points
+collection of recent efficient algorithms for group law computations of points
 for elliptic curves (genus `g = 1`) as well as hyperelliptic curves (genus `g = 2`)
 and for their Jacobians.
 

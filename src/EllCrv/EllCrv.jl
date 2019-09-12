@@ -34,7 +34,6 @@
 ################################################################################
 
 
-
 ################################################################################
 #
 #  Imports
@@ -42,6 +41,7 @@
 ################################################################################
 
 import AbstractAlgebra
+using Markdown
 
 ################################################################################
 #
@@ -49,9 +49,9 @@ import AbstractAlgebra
 #
 ################################################################################
 
-export EllCrv, EllCrvPt, EllCrvDivisor
+export EllCrv, EllCrvPt
 
-export base_field, discriminant, EllipticCurve, infinity, is_inifinite, 
+export base_field, disc, EllipticCurve, infinity, is_inifinite, 
     is_short, is_on_curve, j_invariant, Psi_polynomial, is_rational, 
     psi_poly_field, short_weierstrass_model, +, ×
 
@@ -184,27 +184,6 @@ mutable struct EllCrvPt{T}
     end
 end
 
-mutable struct EllCrvDivisor{T, P_1,...,P_s}
-    coeff::Array{T, 1}
-    s = length(coeff)
-    points::Tuple{P_1::EllCrvPt{T},...,P_s::EllCrvPt{T}}
-    func_field_without_zero::AbstractAlgebra.Field
-    rat_func::AbstractAlgebra.FieldElem ∈ func_field_without_zero
-    degree::Int
-    is_associated::Bool
-    is_effective::Bool
-
-    function EllCrvDivisor{T, P_1,...,P_s}(rat::AbstractAlgebra.FieldElem, 
-        coeffs::Array{T, 1}, points::Tuple{P_1::EllCrvPt{T},...,P_s::EllCrvPt{T}}, 
-        check::Bool = true) where {T, P_1,...,P_s}
-        if check
-            # if is_rational(rat, coeffs)
-                ECD = new{T, P_1,...,P_s}()
-                ECD.is_associated = true
-        end
-    end
-end
-
 ################################################################################
 #
 #  Constructors for users
@@ -235,19 +214,14 @@ function(E::EllCrv{T})(coords::Array{S, 1}, check::Bool = true) where {S, T}
     end
 end
 
-#function EllipticCurveDiv(x::Array{T}, y::Tuple{P_1,...,P_s}, check::Bool = true) 
-#    where {P_1,...,P_s, T}
-#    EDiv = EllCrvDivisor{T, P_1,...,P_s, check}
-#    return EDiv
-#end
-
 ################################################################################
 #
 #  Parent
 #
 ################################################################################
 
-parent_type(::Type{AbstractAlgebra.FieldElem{T}}) where T
+function parent_type(::Type{AbstractAlgebra.FieldElem{T}}) where T
+end
 
 ################################################################################
 #
@@ -291,7 +265,6 @@ end
 
 function b_invars(E::EllCrv)
   if isdefined(E, :long_b)
-    # fixed on Nemo master
     return deepcopy(E.b_invars)
   else
     a1 = E.coeff[1]
@@ -474,7 +447,7 @@ Adds two points on an elliptic curve, whether affine
 or projective, or in the former case, whether in short 
 Weierstrass form or long form.
 
-**does not work in characteristic 2
+** Not implemented in characteristic 2.
 """
 
 # Add two points P, Q with projective coordinates

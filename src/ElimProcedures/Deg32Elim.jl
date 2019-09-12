@@ -21,7 +21,7 @@ include("../EllCrvModel/EllCrvModel.jl")
 import AbstractAlgebra
 
 # Main Verification Procedure
-function verify(prime::UInt64)
+function verify(prime::UInt128)
 
     if prime = 2
         
@@ -38,7 +38,7 @@ function verify(prime::UInt64)
         # elliptic curve, i.e. in homogenous coordinates [x:y:z],
         # EllCrv := x^3 + Ax^2 + B - x*y.
 
-        coeff::Array{T, 1} = {A, B}
+        coeff::Array{Z, 1} = {A, B}
 
 
 
@@ -61,7 +61,8 @@ function verify(prime::UInt64)
 
         
         # Instantiate short Weierstrass Elliptic Curve.
-        EllCrvWeier = EllipticCurve(coeff, true)
+        check = true
+        EllCrvWeier = EllipticCurve(coeff, check)
         
         
     end

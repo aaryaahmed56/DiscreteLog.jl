@@ -9,7 +9,7 @@ module Deg32Elim
 ################################################################################
 
 include("../EllCrv/EllCrv.jl")
-include("../EllCrv/Finite.jl")
+include("../EllCrv/Fields.jl")
 include("../EllCrvModel/EllCrvModel.jl")
 
 ################################################################################
@@ -38,8 +38,7 @@ function verify(prime::UInt64)
         # elliptic curve, i.e. in homogenous coordinates [x:y:z],
         # EllCrv := x^3 + Ax^2 + B - x*y.
 
-        A = A::AbstractAlgebra.FinFieldElem ∈ Z
-        B = B::AbstractAlgebra.FinFieldElem ∈ Z
+        coeff::Array{T, 1} = {A, B}
 
 
 
@@ -61,8 +60,8 @@ function verify(prime::UInt64)
         #    "r")
 
         
-        # Instantiate Elliptic Curve.
-        EllCrvWeier::EllCrv{T} = EllCrvWeier
+        # Instantiate short Weierstrass Elliptic Curve.
+        EllCrvWeier = EllipticCurve(coeff, true)
         
         
     end

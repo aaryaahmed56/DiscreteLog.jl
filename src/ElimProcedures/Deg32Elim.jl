@@ -20,7 +20,15 @@ include("../EllCrvModel/EllCrvModel.jl")
 
 import AbstractAlgebra
 
-# Main Verification Procedure
+using Markdown
+
+@doc Markdown.doc"""
+    verify(prime::UInt128) -> ...
+
+An aside from the proof of Proposition 4.4, verifying 
+the non-vanishing of a constructed determinant given 
+a divisor D1 on E.
+"""
 function verify(prime::UInt128)
 
     if prime = 2

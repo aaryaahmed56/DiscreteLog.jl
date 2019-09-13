@@ -17,6 +17,7 @@ using Markdown
 
 include("FieldsRings.jl")
 include("EllCrv.jl")
+include("EllCrvMap.jl")
 include("EllCrvModel.jl")
 
 ################################################################################
@@ -27,41 +28,50 @@ include("EllCrvModel.jl")
 
 export EllCrvDivisor, Logarithm
 
-mutable struct EllCrvDivisor{T, P_1,...,P_s}
+################################################################################
+#
+#  Abstract Types/Structs
+#
+################################################################################
+
+# Generic struct for (Weil) divisors
+mutable struct EllCrvDivisor{T, P1,...,Ps}
     coeff::Array{T, 1}
-    s = length(coeff)
-    points::Tuple{P_1::EllCrvPt{T},...,P_s::EllCrvPt{T}}
+    points::Tuple{P1::EllCrvPt,...,Ps::EllCrvPt}
     func_field_without_zero::FuncField
     rat_func::AbstractAlgebra.FieldElem ∈ func_field_without_zero
     degree::Int
     
-    # Does the divisor arise from rat_func?
+    # if assoc(rat_func::AbstractAlgebra.FieldElem, coeff::Array{T, 1}) 
+    # --> E::EllCrvDivisor
     is_associated::Bool
     
-    # These are imporant to track as the elimination
-    # procedures presume we have a divisor D on the elliptic curve 
-    # that is not part of a collection of exceptional divisors.
+    # blowup(i::AbstractVarietyMap) --> AbstractVariety
+    # if exceptionalDiv(blowup) --> EllCrvDivisor
     is_exceptional::Bool
     
-    # Are all coefficients non-zero?
+    # if val(coeff::Array{T, 1}) >= 0 
     is_effective::Bool
 
-    function EllCrvDivisor{T, P_1,...,P_s}(rat::AbstractAlgebra.FieldElem, 
-        coeffs::Array{T, 1}, points::Tuple{P_1::EllCrvPt{T},...,P_s::EllCrvPt{T}}, 
-        check::Bool = true) where {T, P_1,...,P_s}
+    function EllCrvDivisor{T, P1,...,Ps}(coeffs::Array{T, 1}, 
+        points::Tuple{P1::EllCrvPt,...,Ps::EllCrvPt}, 
+        check::Bool = true) where {T, P1,...,Ps}
         if check
-            # if is_rational(rat, coeffs)
-                ECD = new{T, P_1,...,P_s}()
+            if assoc(rat, coeffs)
+                ECD = new{T, P1,...,Ps}()
                 ECD.is_associated = true
                 return ECD
-        else 
-            ECD = new{T, P_1,...,P_s}()
-            ECD.is_exceptional = true
-            return ECD
+            elseif val(coeffs) >= 0
+                ECD = new{T, P1,...,Ps}()
+                ECD.is_effective = true
+                return ECD
+            else
+                ECD = new{T, P1,...,Ps}()
+                return ECD
+            end
         end
     end
 end
-
 
 
 @doc Markdown.doc"""
@@ -84,8 +94,35 @@ end
 #
 ################################################################################
 
-#function EllipticCurveDiv(x::Array{T}, y::Tuple{P_1,...,P_s}, check::Bool = true) 
-#    where {P_1,...,P_s, T}
-#    EDiv = EllCrvDivisor{T, P_1,...,P_s, check}
-#    return EDiv
-#end
+function EllCurveDiv{T, P1,...,Ps}(coeff::Array{T}, 
+    points::Tuple{P1::EllCrvPt,...,Ps::EllCrvPt}, check::Bool = true) where 
+    {T, P1,...,Ps}
+        EDiv = EllCrvDivisor{T, P1,...,Ps}(coeff, points, check)
+        return EDiv
+    end
+end
+
+# blowup(i::AbstractVarietyMap) --> V::AbstractVariety
+
+################################################################################
+#
+#  Functions for Divisor types
+#
+################################################################################
+
+function ord{P1,...,Ps}(rat_func::AbstractAlgebra.FieldElem, 
+    points::Tuple{P1::EllCrvPt,...,Ps::EllCrvPt}) where 
+    {P1,...,Ps}
+    ##...
+    return
+end
+
+function assoc{T}(rat_func::AbstractAlgebra.FieldElem, coeff::Array{T, 1}) where T
+    coeff = ord(rat_func)
+    ##...
+
+    return EllCrvDivisor(coeff, points, true)
+end
+
+
+

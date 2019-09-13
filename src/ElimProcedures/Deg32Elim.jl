@@ -27,7 +27,7 @@ using Markdown
 
 An aside from the proof of Proposition 4.4, verifying 
 the non-vanishing of a constructed determinant given 
-a divisor D1 on E.
+a divisor D1 on E
 """
 function verify(prime::UInt128)
 

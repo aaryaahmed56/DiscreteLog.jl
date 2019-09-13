@@ -15,6 +15,7 @@ import AbstractAlgebra
 
 using Markdown
 
+include("FieldsRings.jl")
 include("EllCrv.jl")
 include("EllCrvModel.jl")
 
@@ -30,17 +31,20 @@ mutable struct EllCrvDivisor{T, P_1,...,P_s}
     coeff::Array{T, 1}
     s = length(coeff)
     points::Tuple{P_1::EllCrvPt{T},...,P_s::EllCrvPt{T}}
-    func_field_without_zero::AbstractAlgebra.Field
+    func_field_without_zero::FuncField
     rat_func::AbstractAlgebra.FieldElem ∈ func_field_without_zero
     degree::Int
+    
+    # Does the divisor arise from rat_func?
     is_associated::Bool
     
-    # Effective divisors are imporant to track as the elimination
+    # These are imporant to track as the elimination
     # procedures presume we have a divisor D on the elliptic curve 
-    # that is not part of a collection of effective divisors.
-    is_effective::Bool
-    
+    # that is not part of a collection of exceptional divisors.
     is_exceptional::Bool
+    
+    # Are all coefficients non-zero?
+    is_effective::Bool
 
     function EllCrvDivisor{T, P_1,...,P_s}(rat::AbstractAlgebra.FieldElem, 
         coeffs::Array{T, 1}, points::Tuple{P_1::EllCrvPt{T},...,P_s::EllCrvPt{T}}, 

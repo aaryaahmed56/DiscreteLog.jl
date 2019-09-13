@@ -61,7 +61,10 @@ export base_field, disc, EllipticCurve, infinity, is_inifinite,
 #
 ################################################################################
 
-mutable struct EllCrv{T}
+mutable struct AbstractVariety{V}
+end
+
+mutable struct EllCrv{T} <: AbstractVariety
     base_field::AbstractAlgebra.Field
     short::Bool
     coeff::Array{T, 1}
@@ -399,6 +402,7 @@ end
 # p. 46 Washington, p. 72 Cohen
 @doc Markdown.doc"""
     j(E::EllCrv{T}) -> T
+
 Computes the j-invariant of $E$.
 """
 function j_invariant(E::EllCrv{T}) where T

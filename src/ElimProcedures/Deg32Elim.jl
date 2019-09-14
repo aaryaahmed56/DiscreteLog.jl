@@ -1,16 +1,14 @@
-__precompile__()
-
-module Deg32Elim
-
 ################################################################################
 #
 #  Submodules
 #
 ################################################################################
 
+include("../EllCrv/FieldsRings.jl")
 include("../EllCrv/EllCrv.jl")
-include("../EllCrv/Fields.jl")
-include("../EllCrvModel/EllCrvModel.jl")
+include("../EllCrv/EllCrvDiv.jl")
+include("../EllCrv/EllCrvMap.jl")
+include("../EllCrv/EllCrvModel.jl")
 
 ################################################################################
 #
@@ -20,27 +18,21 @@ include("../EllCrvModel/EllCrvModel.jl")
 
 import AbstractAlgebra
 
-using Markdown
 
-@doc Markdown.doc"""
-    verify(prime::UInt128) -> ...
+# An aside from the proof of Proposition 4.4, verifying 
+# the non-vanishing of a constructed determinant given 
+# a divisor D1 on E
 
-An aside from the proof of Proposition 4.4, verifying 
-the non-vanishing of a constructed determinant given 
-a divisor D1 on E
-"""
 function verify(prime::UInt128)
 
-    if prime = 2
+    if prime == 2
         
         # Fix a field of prime order.
         Z::AbstractAlgebra.FinField = AbstractAlgebra.GF(prime)
 
         # Fix homogeneous coordinates [x:y:z] for an elliptic curve, 
         # where x, y, z are in Z.
-        x = x::AbstractAlgebra.FinFieldElem ∈ Z
-        y = y::AbstractAlgebra.FinFieldElem ∈ Z
-        z = x::AbstractAlgebra.FinFieldElem ∈ Z
+        coords::Array{Z, 1} = {x1, y1, z1}
 
         # Fix coefficients A, B in Z for the Weierstrass form of the
         # elliptic curve, i.e. in homogenous coordinates [x:y:z],
@@ -68,7 +60,7 @@ function verify(prime::UInt128)
         #    "r")
 
         
-        # Instantiate short Weierstrass Elliptic Curve.
+        # Instantiate Short-form Weierstrass Elliptic Curve.
         check = true
         EllCrvWeier = EllipticCurve(coeff, check)
         

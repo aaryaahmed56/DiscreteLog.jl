@@ -18,7 +18,7 @@ import Serialization: serialize, deserialize
 
 ###############################################################################
 #
-#   Library initialisation
+#   Library initialization
 #
 ###############################################################################
 
@@ -33,16 +33,16 @@ function __init__()
     end
 end
 
-
 ################################################################################
 #
-#  "Submodules"
+#  Submodules
 #
 ################################################################################
 
-include("ElimProcedures/Deg32Elim.jl")
-include("ElimProcedures/Deg43Elim.jl")
-include("EllCrv/EllCrv.jl")
-include("EllCrv/EllCrvDiv.jl")
-include("EllCrv/EllCrvModel.jl")
-include("EllCrv/FieldsRings.jl")
+include("../src/ElimProcedures/Deg32Elim.jl")
+include("../src/ElimProcedures/Deg43Elim.jl")
+include("../src/EllCrv/EllCrv.jl")
+include("../src/EllCrv/EllCrvDiv.jl")
+include("../src/EllCrv/EllCrvMap.jl")
+include("../src/EllCrv/EllCrvModel.jl")
+include("../src/EllCrv/FieldsRings.jl")

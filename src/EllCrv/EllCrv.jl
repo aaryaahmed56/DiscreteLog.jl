@@ -49,8 +49,8 @@ import AbstractAlgebra
 ################################################################################
 
 export AbstractVariety, EllCrv, EllCrvPt
-export base_field, disc, EllipticCurve, infinity, is_infinite, is_on_curve, 
-j_invariant, +, ×
+export base_field, disc, EllipticCurve, infinity, generic_point, is_infinite, 
+is_on_curve, j_invariant, +, *
 
 ################################################################################
 #
@@ -60,7 +60,9 @@ j_invariant, +, ×
 
 mutable struct AbstractVariety{V} end
 
-mutable struct EllCrv{T} <: AbstractVariety
+mutable struct AbstractCurve{C} end
+
+mutable struct EllCrv{T} <: AbstractCurve where T <: AbstractAlgebra.FieldElem
     base_field::AbstractAlgebra.Field
     coeff::Array{T, 1}
     a_invars::Tuple{T,...}
@@ -71,7 +73,7 @@ mutable struct EllCrv{T} <: AbstractVariety
     function EllCrv{T}(coeffs::Array{T, 1}, check::Bool = true) where T
 
         if check
-            disc = 4*coeffs[1]^3 + 27*coeffs[2]^2
+            disc = -16*(4*coeffs[1]^3 + 27*coeffs[2]^2)
             if disc != 0
                 E = new{T}()
                 E.coeff = [ deepcopy(z) for z ∈ coeffs]
@@ -91,6 +93,7 @@ end
 mutable struct EllCrvPt{T}
     coord::Array{T, 1}
     is_infinite::Bool
+    is_generic::Bool
     parent::EllCrv{T}
 
     function EllCrvPt{T}(E::EllCrv{T}, coords::Array{T, 1}, 
@@ -111,10 +114,19 @@ mutable struct EllCrvPt{T}
         end
     end
 
+    # Point at infinity
     function EllCrvPt{T}(E::EllCrv{T}) where T
         z = new{T}()
         z.parent = E
         z.is_infinite = true
+        return z
+    end
+
+    # Generic Point
+    function EllCrvPt{T}(E::EllCrv{T}) where T
+        z = new{T}()
+        z.parent = E
+        z.is_generic = true
         return z
     end
 end
@@ -155,9 +167,10 @@ end
 #
 ################################################################################
 
-@inline function parent_type(::Type{AbstractAlgebra.FieldElem{T}}) where T end
+@inline function parent_type(::Type{AbstractAlgebra.FieldElem}) end
 @inline function P.parent(P::EllCrvPt) return P.parent end
 @inline function P.is_infinite(P::EllCrvPt) return P.is_infinite end
+@inline function P.is_generic(P::EllCrvPt) return P.is_generic end
 
 function base_field(E::EllCrv{T}) where T
     return E.base_field::parent_type(T)
@@ -195,17 +208,9 @@ end
 
 ###############################################################################
 #
-#   Basic Field Data, Quotients in Fields
+#   Basic Field Data
 #
 ###############################################################################
-
-data(a::AbstractAlgebra.FieldElem) = a.data
-
-numerator(a::AbstractAlgebra.FieldElem{T}) where 
-{T <: AbstractAlgebra.FieldElem} = numerator(data(a))
-
-denominator(a::AbstractAlgebra.FieldElem{T}) where 
-{T <: AbstractAlgebra.FieldElem} = denominator(data(a))
 
 prime(L::AbstractAlgebra.Field) = L.prime
 
@@ -218,6 +223,17 @@ prime(L::AbstractAlgebra.Field) = L.prime
 function infinity(E::EllCrv{T}) where T 
     infi = EllCrvPt{T}(E)
     return infi
+end
+
+################################################################################
+#
+#  Generic Point
+#
+################################################################################
+
+function generic_point(E::EllCrv{T}) where T 
+    gen = EllCrvPt{T}(E)
+    return generic_point
 end
 
 ################################################################################
@@ -290,6 +306,39 @@ end
 
 ################################################################################
 #
+#  Scalar multiplication
+#
+################################################################################
+
+function *(n::Int, P::EllCrvPt)
+    B = infinity(P.parent)
+    C = P
+  
+    if n >= 0
+        a = n
+    else
+        a = -n
+    end
+  
+    while a != 0
+      if mod(a,2) == 0
+        a = div(a,2)
+        C = C + C
+      else
+        a = a - 1
+        B = B + C
+      end
+    end
+  
+    if n < 0
+      B = -B
+    end
+  
+    return B
+  end
+
+################################################################################
+#
 #  Addition of Points
 #
 ################################################################################
@@ -313,13 +362,13 @@ function +(P::EllCrvPt, Q::EllCrvPt, coords::Array{T, 1}) where T
         E = P.parent
 
         if P.coords[1] != Q.coords[1]
-            m = divexact(Q.coords[2] - P.coords[2], Q.coords[1] - P.coords[1])
+            m = AbstractAlgebra.divexact(Q.coords[2] - P.coords[2], Q.coords[1] - P.coords[1])
             x = m^2 - P.coords[1] - Q.coords[1]
             y = m*(P.coords[1] - x) - P.coords[2]
         elseif P.coords[2] != Q.coords[2]
             return infinity(E)
         elseif P.coords[2] != 0
-            m = divexact(3*(P.coords[1])^2 + (E.coeff[1]), 2*(P.coords[2]))
+            m = AbstractAlgebra.divexact(3*(P.coords[1])^2 + (E.coeff[1]), 2*(P.coords[2]))
             x = m^2 - 2*(P.coords[1])
             y = m*(P.coords[1] - x) - P.coords[2]
         else
@@ -331,20 +380,39 @@ function +(P::EllCrvPt, Q::EllCrvPt, coords::Array{T, 1}) where T
     return Erg
 end
 
-#    x1 = (P.projcoordx)/(P.projcoordz)
-#    y1 = (P.projcoordy)/(P.projcoordz)
-#    x2 = (Q.projcoordx)/(Q.projcoordz)
-#    y2 = (Q.projcoordy)/(Q.projcoordz)
+################################################################################
 #
-#    X = x1 + x2
-#    Y = y1 + y2
+#  Division Polynomials (for SEA)
 #
-#    x3 = X + A + Y/X + (y1^2 + y2^2)/(x1^2 + x2^2)
-#    y3 = y1 + x3 + (x1 + x3)*Y/X
-#
-#    g = gcd(denominator(x3), denominator(y3))
-#
-#    return [(numerator(x3)*denominator(y3)) div g, 
-#    (numerator(x3)*denominator(x3)) div g, 
-#    (denominator(x3)*denominator(y3)) div g]
-#
+################################################################################
+
+function division_polynomialE(E::EllCrv, n::Int, x = nothing, y = nothing)
+    A = numerator(E.coeff[1])
+    B = numerator(E.coeff[2])
+
+    if x === nothing
+        Z = AbstractAlgebra.ZZ
+        Zx, _x = AbstractAlgebra.PolynomialRing(Z, "x")
+        Zxy, y = AbstractAlgebra.PolynomialRing(Zx, "y")
+    else
+        Zxy = AbstractAlgebra.parent(x)
+    end
+
+    if n == 1
+        return one(Zxy)
+    elseif n == 2
+        return 2*y
+    elseif n == 3
+        return 3*x^4 + 6*A*x^2 + 12*B*x - A^2
+    elseif n == 4
+        return 4*y*(x^6 + 5*A*x^4 + 20*B*x^3 - 5*A^2*x^2 - 4*A*B*x - 8*B^2 - A^3)
+    elseif mod(n, 2) == 0 && n >= 3
+        m = div(n, 2)
+        return AbstractAlgebra.divexact(division_polynomialE(E, m, x, y), 2*y)
+        *(division_polynomialE(E, m + 2, x, y)*division_polynomialE(E, m - 1, x, y)^2
+        - division_polynomialE(E, m - 2, x, y)*division_polynomialE(E, m + 1, x, y)^2)
+    else m = div(n - 1, 2)
+        return division_polynomialE(E, m + 2, x, y)*division_polynomialE(E, m, x, y)^3 
+        - division_polynomialE(E, m - 1, x, y)*division_polynomialE(E, m + 1, x, y)^3
+    end
+end

@@ -144,6 +144,8 @@ mutable struct FuncField <: Loc
     
     base_curve::EllCrv
     generic_point::EllCrvPt
+
+    function FuncField()
 end
 
 ###############################################################################

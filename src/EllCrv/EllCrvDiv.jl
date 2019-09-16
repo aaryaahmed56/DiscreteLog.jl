@@ -80,6 +80,7 @@ end
 
 # Logarithms of Divisors
 mutable struct Logarithm
+    base_ec_model::EllCrvModel
     base_ec_divisor::EllCrvDivisor
     #...
 end
@@ -100,7 +101,7 @@ end
 
 ################################################################################
 #
-#  Divisorial Types
+#  Divisorial Type Methods
 #
 ################################################################################
 

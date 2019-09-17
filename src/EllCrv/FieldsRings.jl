@@ -4,8 +4,6 @@
 #           Field Extensions --> Number Fields
 #           Local Rings --> Function Fields
 #
-# This file is part of Hecke.
-#
 # Copyright (c) 2015, 2016: Claus Fieker, Tommy Hofmann
 # All rights reserved.
 #
@@ -72,7 +70,7 @@ end
 
 mutable struct NumField{T} <: ExtField
     is_primitive::Bool
-    primitive_Element::AbstractAlgebra.NumFieldElem
+    primitive_element::AbstractAlgebra.NumFieldElem
 end
 
 mutable struct Loc{T} <: AbstractAlgebra.Ring
@@ -85,12 +83,12 @@ mutable struct Loc{T} <: AbstractAlgebra.Ring
     function Loc{T}(prime::T, primes::Array{T,1}, cached::Bool = true, comp::Bool = false) where 
      {T <: AbstractAlgebra.RingElem}
        length(primes) == 0 && error("No element to localize at since array of primes is empty")
-       if cached && haskey(LocDict, (parent(prime), prime, comp))
-          return LocDict[parent(prime), prime, comp]::Loc{T}
+       if cached && haskey(LocDict, (AbstractAlgebra.parent(prime), prime, comp))
+          return LocDict[AbstractAlgebra.parent(prime), prime, comp]::Loc{T}
        else
-          z = new(parent(prime), prime, primes, comp)
+          z = new(AbstractAlgebra.parent(prime), prime, primes, comp)
           if cached
-             LocDict[parent(prime), prime, comp] = z
+             LocDict[AbstractAlgebra.parent(prime), prime, comp] = z
           end
           return z
        end
@@ -99,15 +97,15 @@ mutable struct Loc{T} <: AbstractAlgebra.Ring
     function Loc{T}(prime::T, cached::Bool = true, comp::Bool = false) where 
      {T <: AbstractAlgebra.RingElem}
       isunit(prime) && error("no-point")
-      if cached && haskey(LocDict, (parent(prime), prime, comp))
-        return LocDict[parent(prime), prime, comp]::Loc{T}
+      if cached && haskey(LocDict, (AbstractAlgebra.parent(prime), prime, comp))
+        return LocDict[AbstractAlgebra.parent(prime), prime, comp]::Loc{T}
       else
         r = new()
-        r.base_ring = parent(prime)
+        r.base_ring = AbstractAlgebra.parent(prime)
         r.prime = prime
         r.comp = comp
         if cached
-           LocDict[parent(prime), prime, comp] = r
+           LocDict[AbstractAlgebra.parent(prime), prime, comp] = r
         end
         return r
       end

@@ -30,7 +30,7 @@ import AbstractAlgebra
 #
 ################################################################################
 
-export EllCrvDivisor, Logarithm
+export AbstractDivisor, EllCrvDivisor, Logarithm
 export EllipticCurveDivisor, ord, assoc
 
 ################################################################################
@@ -39,8 +39,12 @@ export EllipticCurveDivisor, ord, assoc
 #
 ################################################################################
 
-# Generic struct for Weil divisors
-mutable struct EllCrvDivisor{T, P1,...}
+mutable struct AbstractDivisor end
+
+# Formal linear combinations of ideals? Taking inspiration from
+# Macaulay2's Divisor Package...
+const AbstractDivisorDict = Dict{Tuple{Array{T, 1}, Array{T, 1}, Bool}}() where T
+mutable struct EllCrvDivisor{T, P1,...} <: AbstractDivisor
     degree::Int
     coeff::Array{T, 1}
     points::Tuple{P1::EllCrvPt,...}

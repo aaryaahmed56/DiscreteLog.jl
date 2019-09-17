@@ -2,8 +2,6 @@
 #
 #          EllCrv/EllCrv.jl : Elliptic curves over general fields
 #
-# This file is part of Hecke.
-#
 # Copyright (c) 2015, 2016: Claus Fieker, Tommy Hofmann
 # All rights reserved.
 #
@@ -311,9 +309,15 @@ end
 ################################################################################
 
 function *(n::Int, P::EllCrvPt)
-    B = infinity(P.parent)
     C = P
-  
+    E = P.parent
+    B = infinity(E)
+    F = base_field(E)
+
+    if AbstractAlgebra.characteristic(F) == 2
+        # Implement Fast Scalar Mult for Binary Fields.
+        # https://eprint.iacr.org/2017/840.pdf
+    end 
     if n >= 0
         a = n
     else
@@ -386,6 +390,7 @@ end
 #
 ################################################################################
 
+# Make this dynamic
 function division_polynomialE(E::EllCrv, n::Int, x = nothing, y = nothing)
     A = numerator(E.coeff[1])
     B = numerator(E.coeff[2])

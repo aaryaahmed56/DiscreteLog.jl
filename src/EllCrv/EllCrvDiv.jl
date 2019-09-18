@@ -59,7 +59,7 @@ mutable struct EllCrvDivisor{T, P1,...} <: AbstractDivisor
     # if exceptionalDiv(blowup) --> EllCrvDivisor
     is_exceptional::Bool
 
-    # if cumprod(coeff::Array{T, 1}) >= 0 
+    # if prod(coeff::Array{T, 1}) >= 0 
     is_effective::Bool
 
     function EllCrvDivisor{T, P1,...}(coeffs::Array{T, 1}, 
@@ -67,16 +67,16 @@ mutable struct EllCrvDivisor{T, P1,...} <: AbstractDivisor
         if check
             if assoc(rat_func, coeffs, points)
                 ECD = new{T, P1,...}()
-                ECD = coeffs[1]*P1 +...
+                ECD = coeffs[1]*P1 ⊞...
                 ECD.is_associated = true
-            elseif cumprod(coeff) >= 0
+            elseif prod(coeffs) >= 0
                 ECD = new{T, P1,...}()
-                ECD = coeffs[1]*P1 +...
+                ECD = coeffs[1]*P1 ⊞...
                 ECD.is_effective = true
             end
         else 
             ECD = new{T, P1,...}()
-            ECD = coeffs[1]*P1 +...
+            ECD = coeffs[1]*P1 ⊞...
         end
         return ECD
     end

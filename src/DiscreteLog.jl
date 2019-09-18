@@ -8,7 +8,7 @@ module DiscreteLog
 #
 ################################################################################
 
-using LinearAlgebra, InteractiveUtils, Libdl, Distributed, SparseArrays, Serialization, Random, Pkg, Test
+using LinearAlgebra, Distributed, SparseArrays, Serialization, Random, Pkg, Test
 
 import AbstractAlgebra
 

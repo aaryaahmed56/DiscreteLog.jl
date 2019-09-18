@@ -56,22 +56,22 @@ is_on_curve, j_invariant, ⊟, ⊞, *
 #
 ################################################################################
 
-mutable struct AbstractVariety{V} end
+abstract type AbstractVariety{T} end
 
-mutable struct AbstractCurve{C} <: AbstractVariety end
-
-mutable struct EllCrv{T <: AbstractAlgebra.FieldElem} <: AbstractCurve
+abstract type AbstractCurve{T} <: AbstractVariety{T} end
+mutable struct EllCrv{T} <: AbstractCurve{T}
     base_field::AbstractAlgebra.Field
     coeff::Array{T, 1}
-    a_invars::Tuple{T,...}
-    b_invars::Tuple{T,...}
+    a_invars::Tuple{Vararg{T, N} where N}
+    b_invars::Tuple{Vararg{T, N} where N}
+    disc::T
     j::T
 
     function EllCrv{T}(coeffs::Array{T, 1}, check::Bool = true) where T
 
         if check
-            disc = 4*coeffs[1]^3 + 27*coeffs[2]^2
-            if disc != 0
+            d = 4*coeffs[1]^3 + 27*coeffs[2]^2
+            if d != 0
                 E = new{T}()
                 E.coeff = [ deepcopy(z) for z ∈ coeffs]
                 E.base_field = parent(coeffs[1])
@@ -87,7 +87,7 @@ mutable struct EllCrv{T <: AbstractAlgebra.FieldElem} <: AbstractCurve
     end
 end
 
-mutable struct EllCrvPt{T <: AbstractAlgebra.FieldElem}
+mutable struct EllCrvPt{T}
     degree::Int
     coord::Array{T, 1}
     is_infinite::Bool
@@ -127,12 +127,12 @@ end
 #
 ################################################################################
 
-function EllipticCurve{T}(coeffs::Array{T, 1}, check::Bool = true) where T
+function EllipticCurve(coeffs::Array{T, 1}, check::Bool = true) where T
     E = EllCrv{T}(coeffs, check)
     return E
 end
 
-function(E::EllCrv{T})(coords::Array{S, 1}, check::Bool = true) where {S, T}
+function EllipticCurvePoint(E::EllCrv{T}, coords::Array{S, 1}, check::Bool = true) where {S, T}
     if length(coords) < 2
         error("Point must have at least two coordinates.")
     elseif length(coords) == 2
@@ -221,7 +221,7 @@ function is_on_curve(E::EllCrv{T}, coords::Array{T, 1}) where T
         y = coords[2]
         
         if y^2 == x^3 + (E.coeff[1])*x + (E.coeff[2]) || 
-            y^2 + x*y = x^3 + (E.coeff[1])*x^2 + (E.coeff[2])
+            y^2 + x*y == x^3 + (E.coeff[1])*x^2 + (E.coeff[2])
             return true
         else
             return false

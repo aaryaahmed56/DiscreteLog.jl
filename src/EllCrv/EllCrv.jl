@@ -286,7 +286,7 @@ function ⊟(P::EllCrvPt{T}) where T
     E = P.parent
     coords = P.coord
     if is_infinite(P)
-        O = infinity(P)
+        O = infinity(E)
         return O
     end
 
@@ -388,7 +388,7 @@ function *(n::Int, P::EllCrvPt)
             
             # Efficient affine point quintupling
             # https://eprint.iacr.org/2017/840.pdf
-            if n == 3 && 6*P != O
+            if n == 5 && 6*P != O
                 xP = coords[1]
                 yP = coords[2]
 

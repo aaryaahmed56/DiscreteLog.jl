@@ -46,9 +46,9 @@ import AbstractAlgebra
 #
 ################################################################################
 
-export AbstractVariety, EllCrv, EllCrvPt
-export base_field, disc, EllipticCurve, infinity, generic_point, is_infinite, 
-is_on_curve, j_invariant, +, *
+export AbstractVariety, AbstractCurve, EllCrv, EllCrvPt
+export base_field, disc, EllipticCurve, infinity, is_infinite, 
+is_on_curve, j_invariant, ⊟, ⊞, *
 
 ################################################################################
 #
@@ -58,20 +58,19 @@ is_on_curve, j_invariant, +, *
 
 mutable struct AbstractVariety{V} end
 
-mutable struct AbstractCurve{C} end
+mutable struct AbstractCurve{C} <: AbstractVariety end
 
-mutable struct EllCrv{T} <: AbstractCurve where T <: AbstractAlgebra.FieldElem
+mutable struct EllCrv{T <: AbstractAlgebra.FieldElem} <: AbstractCurve
     base_field::AbstractAlgebra.Field
     coeff::Array{T, 1}
     a_invars::Tuple{T,...}
     b_invars::Tuple{T,...}
-    long_c::Array{T, 1}
     j::T
 
     function EllCrv{T}(coeffs::Array{T, 1}, check::Bool = true) where T
 
         if check
-            disc = -16*(4*coeffs[1]^3 + 27*coeffs[2]^2)
+            disc = 4*coeffs[1]^3 + 27*coeffs[2]^2
             if disc != 0
                 E = new{T}()
                 E.coeff = [ deepcopy(z) for z ∈ coeffs]
@@ -88,7 +87,8 @@ mutable struct EllCrv{T} <: AbstractCurve where T <: AbstractAlgebra.FieldElem
     end
 end
 
-mutable struct EllCrvPt{T}
+mutable struct EllCrvPt{T <: AbstractAlgebra.FieldElem}
+    degree::Int
     coord::Array{T, 1}
     is_infinite::Bool
     is_generic::Bool
@@ -117,14 +117,6 @@ mutable struct EllCrvPt{T}
         z = new{T}()
         z.parent = E
         z.is_infinite = true
-        return z
-    end
-
-    # Generic Point
-    function EllCrvPt{T}(E::EllCrv{T}) where T
-        z = new{T}()
-        z.parent = E
-        z.is_generic = true
         return z
     end
 end
@@ -161,14 +153,13 @@ end
 
 ################################################################################
 #
-#  Field access
+#  Field access/ Quotients
 #
 ################################################################################
 
 @inline function parent_type(::Type{AbstractAlgebra.FieldElem}) end
-@inline function P.parent(P::EllCrvPt) return P.parent end
-@inline function P.is_infinite(P::EllCrvPt) return P.is_infinite end
-@inline function P.is_generic(P::EllCrvPt) return P.is_generic end
+@inline function parent(P::EllCrvPt) return P.parent end
+@inline function is_infinite(P::EllCrvPt) return P.is_infinite end
 
 function base_field(E::EllCrv{T}) where T
     return E.base_field::parent_type(T)
@@ -188,6 +179,7 @@ function b_invars(E::EllCrv)
     if isdefined(E, :b_invars)
         return [ deepcopy(z) for z ∈ E.b_invars]
     else
+        # Coefficients for general Weierstrass equation.
         a1 = E.coeff[1]
         a2 = E.coeff[2]
         a3 = E.coeff[3]
@@ -204,14 +196,6 @@ function b_invars(E::EllCrv)
     end
 end
 
-###############################################################################
-#
-#   Basic Field Data
-#
-###############################################################################
-
-prime(L::AbstractAlgebra.Field) = L.prime
-
 ################################################################################
 #
 #  Point at infinity
@@ -221,17 +205,6 @@ prime(L::AbstractAlgebra.Field) = L.prime
 function infinity(E::EllCrv{T}) where T 
     infi = EllCrvPt{T}(E)
     return infi
-end
-
-################################################################################
-#
-#  Generic Point
-#
-################################################################################
-
-function generic_point(E::EllCrv{T}) where T 
-    gen = EllCrvPt{T}(E)
-    return generic_point
 end
 
 ################################################################################
@@ -247,17 +220,18 @@ function is_on_curve(E::EllCrv{T}, coords::Array{T, 1}) where T
         x = coords[1]
         y = coords[2]
         
-        if y^2 == x^3 + (E.coeff[1])*x + (E.coeff[2])
+        if y^2 == x^3 + (E.coeff[1])*x + (E.coeff[2]) || 
+            y^2 + x*y = x^3 + (E.coeff[1])*x^2 + (E.coeff[2])
             return true
         else
             return false
         end
     elseif length(coords) == 3
-        x = coords[1]
-        y = coords[2]
-        z = coords[3]
+        X = coords[1]
+        Y = coords[2]
+        Z = coords[3]
 
-        if y^2*z == x^3 + (E.coeff[1])*x*z^2 + (E.coeff[2])*z^3
+        if Y^2*Z == X^3 + (E.coeff[1])*X*Z^2 + (E.coeff[2])*Z^3
             return true
         else
             return false
@@ -304,46 +278,26 @@ end
 
 ################################################################################
 #
-#  Scalar multiplication
+#  Inverse
 #
 ################################################################################
 
-function *(n::Int, P::EllCrvPt)
-    C = P
+function ⊟(P::EllCrvPt{T}) where T
     E = P.parent
-    B = infinity(E)
-    F = base_field(E)
+    coords = P.coord
+    if is_infinite(P)
+        O = infinity(P)
+        return O
+    end
 
-    if AbstractAlgebra.characteristic(F) == 2
-        # Implement Fast Scalar Mult for Binary Fields.
-        # https://eprint.iacr.org/2017/840.pdf
-    end 
-    if n >= 0
-        a = n
-    else
-        a = -n
-    end
-  
-    while a != 0
-      if mod(a,2) == 0
-        a = div(a,2)
-        C = C + C
-      else
-        a = a - 1
-        B = B + C
-      end
-    end
-  
-    if n < 0
-      B = -B
-    end
-  
-    return B
-  end
+    Q = E([coords[1], -coords[2]], false)
+
+    return Q
+end
 
 ################################################################################
 #
-#  Addition of Points
+#  Addition of Points (Group Law)
 #
 ################################################################################
 
@@ -351,9 +305,10 @@ function *(n::Int, P::EllCrvPt)
 # P := [P[1]:P[2]:P[3]], Q := [Q[1]:Q[2]:Q[3]] or 
 # affine coordinates P:= (P[1], P[2]), Q := (Q[1], Q[2])
 
-function +(P::EllCrvPt, Q::EllCrvPt, coords::Array{T, 1}) where T 
+function ⊞(P::EllCrvPt{T}, Q::EllCrvPt{T}) where T 
     parent(P) != parent(Q) && error("Points must live on the same curve.")
-
+    coords = P.coord
+    
     if length(coords) == 2
         
         # Is either P or Q the point at infinity?
@@ -362,26 +317,124 @@ function +(P::EllCrvPt, Q::EllCrvPt, coords::Array{T, 1}) where T
         elseif Q.is_infinite
             return P
         end
-
+        
         E = P.parent
 
-        if P.coords[1] != Q.coords[1]
-            m = AbstractAlgebra.divexact(Q.coords[2] - P.coords[2], Q.coords[1] - P.coords[1])
-            x = m^2 - P.coords[1] - Q.coords[1]
-            y = m*(P.coords[1] - x) - P.coords[2]
-        elseif P.coords[2] != Q.coords[2]
+        if P.coord[1] != Q.coord[1]
+            m = AbstractAlgebra.divexact(Q.coord[2] - P.coord[2], 
+            Q.coord[1] - P.coord[1])
+            
+            x = m^2 - P.coord[1] - Q.coord[1]
+            y = m*(P.coord[1] - x) - P.coord[2]
+        elseif P.coord[2] != Q.coord[2]
             return infinity(E)
-        elseif P.coords[2] != 0
-            m = AbstractAlgebra.divexact(3*(P.coords[1])^2 + (E.coeff[1]), 2*(P.coords[2]))
-            x = m^2 - 2*(P.coords[1])
-            y = m*(P.coords[1] - x) - P.coords[2]
+        elseif P.coord[2] != 0
+            m = AbstractAlgebra.divexact(3*(P.coord[1])^2 + (E.coeff[1]), 
+            2*(P.coord[2]))
+            
+            x = m^2 - 2*(P.coord[1])
+            y = m*(P.coord[1] - x) - P.coord[2]
         else
             return infinity(E)
         end
-
+        
         Erg = E([x, y], false)
     end
     return Erg
+end
+
+################################################################################
+#
+#  Window Non-adjacent Form (for Scalar Mult.)
+#
+################################################################################
+
+function NAF_dw(d::Int, w::Int)
+    l = 0
+    k = Int[]
+
+    if d > 0 && w >= 2
+        while d >= 1
+            if mod(d, 2) != 0
+                kl = 2 - mod(d, 2^w)
+                push!(k, kl)
+                d = d - kl
+            else
+                kl = 0
+                push!(k, kl)
+            end
+            d = div(d, 2)
+            l += 1
+        end 
+        return k 
+    end
+end
+
+################################################################################
+#
+#  Scalar multiplication
+#
+################################################################################
+
+function *(n::Int, P::EllCrvPt)
+    E = P.parent
+    coords = P.coord
+    O = infinity(E)
+    F = base_field(E)
+
+    if length(coords) == 2
+        if F <: AbstractAlgebra.GFField && 
+            AbstractAlgebra.characteristic(F) == 2
+            
+            # Efficient affine point quintupling
+            # https://eprint.iacr.org/2017/840.pdf
+            if n == 3 && 6*P != O
+                xP = coords[1]
+                yP = coords[2]
+
+                A = E.coeff[1]
+                B = E.coeff[2]
+
+                α = xP^4 + xP^3 + B
+                β = α^2 + xP^2*(xP^4 + B)
+                γ = α^2*(xP^4 + B) + xP^3*β
+
+                ρ = AbstractAlgebra.divexact(xP^3*β, γ)
+                
+                x5P = xP + ρ + ρ^2
+                y5P = yP + xP + (x5P + xP)*(ρ + xP^2 + A) + 
+                AbstractAlgebra.divexact(xP*β*α^2*(β + 
+                (xP^4 + B)*(xP^4 + B + yP^2 + xP^2)), γ^2)
+
+                FiveP = E([x5P, y5P], false)
+                
+                return FiveP
+            end
+        end
+    end
+
+    # Repeated addition
+    if n >= 0
+        a = n
+    else
+        a = -n
+    end
+
+    while a != 0
+      if mod(a,2) == 0
+        a = div(a,2)
+        P = P ⊞ P
+      else
+        a = a - 1
+        O = O ⊞ P
+      end
+    end
+  
+    if n < 0
+      P = ⊟(P)
+    end
+  
+    return O
 end
 
 ################################################################################
@@ -390,11 +443,12 @@ end
 #
 ################################################################################
 
-# Make this dynamic
+# TODO: Make this dynamic
+# https://eprint.iacr.org/2002/109.pdf
 function division_polynomialE(E::EllCrv, n::Int, x = nothing, y = nothing)
     A = numerator(E.coeff[1])
     B = numerator(E.coeff[2])
-
+    
     if x === nothing
         Z = AbstractAlgebra.ZZ
         Zx, _x = AbstractAlgebra.PolynomialRing(Z, "x")

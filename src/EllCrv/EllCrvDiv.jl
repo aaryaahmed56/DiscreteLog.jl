@@ -13,7 +13,7 @@
 #
 ################################################################################
 
-include("FieldsRings.jl")
+# include("FieldsRings.jl")
 include("EllCrv.jl")
 
 ################################################################################
@@ -39,17 +39,17 @@ export EllipticCurveDivisor, ord, assoc
 #
 ################################################################################
 
-mutable struct AbstractDivisor end
+abstract type AbstractDivisor{T, EllCrvPt, N} end
 
 # Formal linear combinations of ideals? Taking inspiration from
 # Macaulay2's Divisor Package...
-const AbstractDivisorDict = Dict{Tuple{Array{T, 1}, Array{T, 1}, Bool}}() where T
-mutable struct EllCrvDivisor{T, P1,...} <: AbstractDivisor
+# const AbstractDivisorDict = Dict{Tuple{Array{T, 1}, Array{T, 1}, Bool}}() where T
+mutable struct EllCrvDivisor{T, EllCrvPt, N} <: AbstractDivisor{T, EllCrvPt, N}
     degree::Int
     coeff::Array{T, 1}
-    points::Tuple{P1::EllCrvPt,...}
-    func_field_without_zero::FuncField
-    rat_func::AbstractAlgebra.FieldElem ∈ func_field_without_zero
+    points::Tuple{Vararg{P::EllCrvPt, N} where {P, N}}
+    # func_field_without_zero::FuncField
+    rat_func::AbstractAlgebra.FieldElem
     
     # if assoc(rat_func::AbstractAlgebra.FieldElem, coeff::Array{T, 1}) 
     # --> EllCrvDivisor
@@ -62,21 +62,20 @@ mutable struct EllCrvDivisor{T, P1,...} <: AbstractDivisor
     # if prod(coeff::Array{T, 1}) >= 0 
     is_effective::Bool
 
-    function EllCrvDivisor{T, P1,...}(coeffs::Array{T, 1}, 
-        points::Tuple{P1::EllCrvPt,...}, check::Bool = true) where {T, P1,...}
+    function EllCrvDivisor{T, EllCrvPt, N}(coeffs::Array{T, 1}, 
+        points::Tuple{Vararg{P::EllCrvPt, N} where {P, N}}, check::Bool = true) where 
+        {T, EllCrvPt, N}
         if check
-            if assoc(rat_func, coeffs, points)
+#=             if assoc(rat_func, coeffs, points)
                 ECD = new{T, P1,...}()
                 ECD = coeffs[1]*P1 ⊞...
-                ECD.is_associated = true
-            elseif prod(coeffs) >= 0
-                ECD = new{T, P1,...}()
-                ECD = coeffs[1]*P1 ⊞...
+                ECD.is_associated = true =#
+            if prod(coeffs) >= 0
+                ECD = new{T, EllCrvPt, N}()
                 ECD.is_effective = true
             end
         else 
-            ECD = new{T, P1,...}()
-            ECD = coeffs[1]*P1 ⊞...
+            ECD = new{T, EllCrvPt, N}()
         end
         return ECD
     end
@@ -95,7 +94,7 @@ end
 #
 ################################################################################
 
-function EllipticCurveDivisor{T, P1,...}(coeff::Array{T, 1}, 
+function EllipticCurveDivisor(coeff::Array{T, 1}, 
     points::Tuple{P1::EllCrvPt,...}, check::Bool = true) where {T, P1,...}
     if check
         ECD = EllCrvDivisor{T, P1,...}(coeff, points, check)

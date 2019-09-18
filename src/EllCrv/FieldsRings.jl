@@ -68,7 +68,7 @@ mutable struct ExtField <: AbstractAlgebra.Field
     degree::Int
 end
 
-mutable struct NumField{T} <: ExtField
+mutable struct NumField <: ExtField
     is_primitive::Bool
     primitive_element::AbstractAlgebra.NumFieldElem
 end

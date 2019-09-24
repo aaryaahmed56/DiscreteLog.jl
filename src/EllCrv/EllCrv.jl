@@ -47,8 +47,8 @@ import AbstractAlgebra
 ################################################################################
 
 export AbstractVariety, AbstractCurve, EllCrv, EllCrvPt
-export base_field, disc, EllipticCurve, infinity, is_infinite, 
-is_on_curve, j_invariant, ⊟, ⊞, *
+export base_field, disc, EllipticCurve, infinity, isinfinite, isshort, 
+issimp, ison_curve, j_invariant, ⊟, ⊞, ×
 
 ################################################################################
 #
@@ -56,67 +56,125 @@ is_on_curve, j_invariant, ⊟, ⊞, *
 #
 ################################################################################
 
+# Ancestral abstract type -- Abstract k-variety where k field.
 abstract type AbstractVariety{T} end
 
 abstract type AbstractCurve{T} <: AbstractVariety{T} end
+
 mutable struct EllCrv{T} <: AbstractCurve{T}
     base_field::AbstractAlgebra.Field
     coeff::Array{T, 1}
+
+    # General Weierstrass form invariants
+    # for both projective and affine coordinates, i.e.
+    # 
+    # Affine (x, y):
+    # y^2 + a1*x*y + a3*y = x^3 + a2*x^2 + a4*x + a6
+    # 
+    # Projective (X:Y:Z):
+    # Y^2*Z + a1*X*Y*Z + a3*Y*Z^2 = X^3 + a2*X^2*Z + a4*X*Z^2 + a6*Z^3
     a_invars::Tuple{Vararg{T, N} where N}
-    b_invars::Tuple{Vararg{T, N} where N}
+
+    # Perform change of variables
+    # phi: y --> 2*y + a1*x + a3
+    # to determine b2, b4, b6.
+    # b8 is for discriminant.
+    b_invars::Tuple{Vararg{T, M} where M}
+    c_invars::Array{T, 1}
+    
+    # Of form
+    # Affine (x, y): y^2 = x^3 + A*x + B
+    # Projective (X:Y:Z) = Y^2*Z = X^3*Z + A*X*Z^2 + B*Z^3
+    # i.e. a1 = 0, a2 = 0, a3 = 0, a4 = A, a6 = B
+    short::Bool
+    
+    # Of form
+    # Affine (x, y): y^2 + x*y = x^3 + A*x^2 + B
+    # Projective (X:Y:Z) = Y^2*Z + X*Y*Z = X^3 + A*X^2*Z + B*Z^3
+    # i.e. a1 = 1, a2 = A, a3 = 0, a4 = 0, a6 = B
+    simp::Bool
     disc::T
     j::T
 
     function EllCrv{T}(coeffs::Array{T, 1}, check::Bool = true) where T
-
         if check
-            d = 4*coeffs[1]^3 + 27*coeffs[2]^2
+            a1 = coeffs[1]
+            a2 = coeffs[2]
+            a3 = coeffs[3]
+            a4 = coeffs[4]
+            a6 = coeffs[5]
+
+            b2 = a1^2 + 4*a2
+            b4 = 2*a4 + a1*a3
+            b6 = a3^2 + 4*a6
+            b8 = a1^2*a6 + 4*a2*a6 - a1*a3*a4 + a2*a3^2 - a4^2
+
+            d = -b2^2*b8 - 8*b4^3 - 27*b6^2 + 9*b2*b4*b6
+            
             if d != 0
-                E = new{T}()
-                E.coeff = [ deepcopy(z) for z ∈ coeffs]
-                E.base_field = parent(coeffs[1])
+                if d == -16*(4*a4^3 + 27*a6^2)
+                    E = new{T}()
+                    E.short = true
+                    E.base_field = AbstractAlgebra.parent(a4)
+                    E.a_invars = (a4, a6)
+                    E.b_invars = (b4, b6, b8)
+                    E.coeff = [ deepcopy(z) for z ∈ coeffs]
+                elseif d == (9 - a6)*(1 + 4*a2)^3 - 432*a6^2
+                    E = new{T}()
+                    E.simp = true
+                    E.base_field = AbstractAlgebra.parent(a1)
+                    E.a_invars = (a1, a2, a6)
+                    E.b_invars = (b2, b6, b8)
+                    E.coeff = [ deepcopy(z) for z ∈ coeffs]
+                else
+                    E = new{T}()
+                    E.base_field = AbstractAlgebra.parent(a1)
+                    E.a_invars = (a1, a2, a3, a4, a6)
+                    E.b_invars = (b2, b4, b6, b8)
+                    E.coeff = [ deepcopy(z) for z ∈ coeffs]
+                    E.disc = d
+                end
             else
-                error("Discriminant is zero.")
+                error("Discriminant is zero")
             end
-        else
-            E = new{T}()
-            E.coeff = [ deepcopy(z) for z ∈ coeffs]
-            E.base_field = parent(coeffs[1])
+            return E
         end
-        return E
     end
 end
 
 mutable struct EllCrvPt{T}
     degree::Int
-    coord::Array{T, 1}
-    is_infinite::Bool
-    is_generic::Bool
+    coord::Tuple{Vararg{T, N} where N}
+    isinfinite::Bool
     parent::EllCrv{T}
 
-    function EllCrvPt{T}(E::EllCrv{T}, coords::Array{T, 1}, 
+    function EllCrvPt{T}(E::EllCrv{T}, coords::Tuple{Vararg{T, N} where N}, 
         check::Bool = true) where T
         if check
-            if is_on_curve(E, coords)
+            if ison_curve(E, coords)
                 if length(coords) < 2
                     error("Point must have at least two coordinates.")
                 elseif length(coords) == 2
                     P = new{T}(coords[1], coords[2], false, E)
+                    return P
                 elseif length(coords) == 3
                     P = new{T}(coords[1], coords[2], coords[3], false, E)
+                    return P
                 end
-                return P
             else
                 error("Point is not on curve.")
             end
+        else
+            P = new{T}(coords[1]..., false, E)
+            return P
         end
     end
-
+    
     # Point at infinity
     function EllCrvPt{T}(E::EllCrv{T}) where T
         z = new{T}()
         z.parent = E
-        z.is_infinite = true
+        z.isinfinite = true
         return z
     end
 end
@@ -127,12 +185,12 @@ end
 #
 ################################################################################
 
-function EllipticCurve(coeffs::Array{T, 1}, check::Bool = true) where T
-    E = EllCrv{T}(coeffs, check)
+function EllipticCurve(x::Array{T, 1}, check::Bool = true) where T
+    E = EllCrv{T}(x, check)
     return E
 end
 
-function EllipticCurvePoint(E::EllCrv{T}, coords::Array{S, 1}, check::Bool = true) where {S, T}
+function (E::EllCrv{T})(coords::Tuple{Vararg{T, N} where N}, check::Bool = true) where T
     if length(coords) < 2
         error("Point must have at least two coordinates.")
     elseif length(coords) == 2
@@ -142,7 +200,7 @@ function EllipticCurvePoint(E::EllCrv{T}, coords::Array{S, 1}, check::Bool = tru
     end
 
     if S == T 
-        parent(coords[1]) != base_field(E) &&
+        AbstractAlgebra.parent(coords[1]) != base_field(E) &&
             error("The elliptic curve and point must be defined over the same
             field.")
             return EllCrvPt{T}(E, coords, check)
@@ -156,16 +214,17 @@ end
 #  Field access/ Quotients
 #
 ################################################################################
-
-@inline function parent_type(::Type{AbstractAlgebra.FieldElem}) end
+@inline function parenttype(::Type{AbstractAlgebra.FieldElem}) end
 @inline function parent(P::EllCrvPt) return P.parent end
-@inline function is_infinite(P::EllCrvPt) return P.is_infinite end
+@inline function isinfinite(P::EllCrvPt) return P.isinfinite end
+@inline function isshort(E::EllCrv) return E.short end
+@inline function issimp(E::EllCrv) return E.simp end
 
-function base_field(E::EllCrv{T}) where T
-    return E.base_field::parent_type(T)
+@inline function base_field(E::EllCrv{T}) where T
+    return E.base_field::parenttype(T)
 end
 
-function a_invars(E::EllCrv)
+@inline function a_invars(E::EllCrv)
     if isdefined(E, :a_invars)
         return [ deepcopy(z) for z ∈ E.a_invars ]
     else
@@ -175,11 +234,10 @@ function a_invars(E::EllCrv)
     end
 end
 
-function b_invars(E::EllCrv)
+@inline function b_invars(E::EllCrv)
     if isdefined(E, :b_invars)
         return [ deepcopy(z) for z ∈ E.b_invars]
     else
-        # Coefficients for general Weierstrass equation.
         a1 = E.coeff[1]
         a2 = E.coeff[2]
         a3 = E.coeff[3]
@@ -191,8 +249,9 @@ function b_invars(E::EllCrv)
         b6 = a3^2 + 4*a6
         b8 = a1^2*a6 - a1*a3*a4 + 4*a2*a6 + a2*a3^2 - a4^2
 
-        E.b_invars = (b2, b4, b6, b8)
-        return (b2, b4, b6, b8)
+        t = (b2, b4, b6, b8)
+        E.b_invars = t
+        return t
     end
 end
 
@@ -213,15 +272,16 @@ end
 #
 ################################################################################
 
-function is_on_curve(E::EllCrv{T}, coords::Array{T, 1}) where T 
+function ison_curve(E::EllCrv{T}, coords::Tuple{Vararg{T, N} where N}) where T 
     length(coords) != 2 && error("Point must have at least two coordinates.")
 
+    (a1, a2, a3, a4, a6) = a_invars(E)
+    
     if length(coords) == 2
         x = coords[1]
         y = coords[2]
         
-        if y^2 == x^3 + (E.coeff[1])*x + (E.coeff[2]) || 
-            y^2 + x*y == x^3 + (E.coeff[1])*x^2 + (E.coeff[2])
+        if y^2 + a1*x*y + a3*y == x^3 + a2*x^2 + a4*x + a6
             return true
         else
             return false
@@ -231,7 +291,7 @@ function is_on_curve(E::EllCrv{T}, coords::Array{T, 1}) where T
         Y = coords[2]
         Z = coords[3]
 
-        if Y^2*Z == X^3 + (E.coeff[1])*X*Z^2 + (E.coeff[2])*Z^3
+        if Y^2*Z + a1*X*Y*Z + a3*Y*Z^2 == X^3 + a2*X^2*Z + a4*X*Z^2 + a6*Z^3
             return true
         else
             return false
@@ -250,12 +310,11 @@ function disc(E::EllCrv{T}) where T
         return E.disc
     end
 
-    R = base_field(E)
-    F = EllipticCurve([R(0), R(0), R(0), E.coeff[1], E.coeff[2]])
-    d = disc(F)
+    (b2, b4, b6, b8) = b_invars(E)
 
-    E.disc = d 
-    return d::T 
+    d = -b2^2*b8 - 8*b4^3 - 27*b6^2 + 9*b2*b4*b6
+    E.disc = d
+    return d::T
 end
 
 ################################################################################
@@ -269,28 +328,35 @@ function j_invariant(E::EllCrv{T}) where T
         return E.j
     end
 
-    R = base_field(E)
-    F = EllipticCurve([R(0), R(0), R(0)], E.coeff[1], E.coeff[2])
-    j = j_invariant(F)
+    (b2, b4) = b_invars(E)
+
+    c4 = b2^2 - 24*b4
+
+    j = AbstractAlgebra.divexact(c4^3, disc(E))
     E.j = j
     return j::T
 end
 
 ################################################################################
 #
-#  Inverse
+#  Inversion
 #
 ################################################################################
 
 function ⊟(P::EllCrvPt{T}) where T
-    E = P.parent
+    E = parent(P)
     coords = P.coord
-    if is_infinite(P)
+    if isinfinite(P)
         O = infinity(E)
         return O
     end
 
-    Q = E([coords[1], -coords[2]], false)
+    x = coords[1]
+    y = -coords[2]
+
+    t = (x, y)
+
+    Q = E(t, false)
 
     return Q
 end
@@ -312,13 +378,13 @@ function ⊞(P::EllCrvPt{T}, Q::EllCrvPt{T}) where T
     if length(coords) == 2
         
         # Is either P or Q the point at infinity?
-        if P.is_infinite
+        if P.isinfinite
             return Q
-        elseif Q.is_infinite
+        elseif Q.isinfinite
             return P
         end
         
-        E = P.parent
+        E = parent(P)
 
         if P.coord[1] != Q.coord[1]
             m = AbstractAlgebra.divexact(Q.coord[2] - P.coord[2], 
@@ -334,11 +400,12 @@ function ⊞(P::EllCrvPt{T}, Q::EllCrvPt{T}) where T
             
             x = m^2 - 2*(P.coord[1])
             y = m*(P.coord[1] - x) - P.coord[2]
+            t = (x, y)
         else
             return infinity(E)
         end
         
-        Erg = E([x, y], false)
+        Erg = E(t, false)
     end
     return Erg
 end
@@ -356,17 +423,16 @@ function NAF_dw(d::Int, w::Int)
     if d > 0 && w >= 2
         while d >= 1
             if mod(d, 2) != 0
-                kl = 2 - mod(d, 2^w)
-                push!(k, kl)
-                d = d - kl
+                k[l] = 2 - mod(d, 2^w) # TODO: signed modulus mods
+                d = d - k[l]
             else
-                kl = 0
-                push!(k, kl)
+                k[l] = 0
             end
             d = div(d, 2)
             l += 1
-        end 
-        return k 
+        end
+        # TODO: concatenate digits of array k into WNAF form for d 
+        return k
     end
 end
 
@@ -376,24 +442,28 @@ end
 #
 ################################################################################
 
-function *(n::Int, P::EllCrvPt)
-    E = P.parent
+function ×(n::Int, P::EllCrvPt)
+    E = parent(P)
     coords = P.coord
     O = infinity(E)
     F = base_field(E)
 
-    if length(coords) == 2
+    if issimp(E) == true
         if F <: AbstractAlgebra.GFField && 
             AbstractAlgebra.characteristic(F) == 2
             
             # Efficient affine point quintupling
+            # for simple Weierstrass form Elliptic 
+            # Curves over binary fields.
             # https://eprint.iacr.org/2017/840.pdf
-            if n == 5 && 6*P != O
+            if n == 5
                 xP = coords[1]
                 yP = coords[2]
 
-                A = E.coeff[1]
-                B = E.coeff[2]
+                (a1, a2, a6) = a_invars(E)
+
+                A = a2
+                B = a6
 
                 α = xP^4 + xP^3 + B
                 β = α^2 + xP^2*(xP^4 + B)
@@ -406,20 +476,20 @@ function *(n::Int, P::EllCrvPt)
                 AbstractAlgebra.divexact(xP*β*α^2*(β + 
                 (xP^4 + B)*(xP^4 + B + yP^2 + xP^2)), γ^2)
 
-                FiveP = E([x5P, y5P], false)
+                FiveP = E((x5P, y5P), false)
                 
                 return FiveP
             end
         end
     end
 
-    # Repeated addition
     if n >= 0
         a = n
     else
         a = -n
     end
 
+    # Double and add
     while a != 0
       if mod(a,2) == 0
         a = div(a,2)
@@ -446,8 +516,15 @@ end
 # TODO: Make this dynamic
 # https://eprint.iacr.org/2002/109.pdf
 function division_polynomialE(E::EllCrv, n::Int, x = nothing, y = nothing)
-    A = numerator(E.coeff[1])
-    B = numerator(E.coeff[2])
+    
+    if isshort(E) == false
+        error("Must be in short form.")
+    end
+    
+    (a1, a2, a3, a4, a6) = a_invars(E)
+
+    A = numerator(a4)
+    B = numerator(a6)
     
     if x === nothing
         Z = AbstractAlgebra.ZZ
@@ -457,21 +534,9 @@ function division_polynomialE(E::EllCrv, n::Int, x = nothing, y = nothing)
         Zxy = AbstractAlgebra.parent(x)
     end
 
-    if n == 1
-        return one(Zxy)
-    elseif n == 2
-        return 2*y
-    elseif n == 3
-        return 3*x^4 + 6*A*x^2 + 12*B*x - A^2
-    elseif n == 4
-        return 4*y*(x^6 + 5*A*x^4 + 20*B*x^3 - 5*A^2*x^2 - 4*A*B*x - 8*B^2 - A^3)
-    elseif mod(n, 2) == 0 && n >= 3
-        m = div(n, 2)
-        return AbstractAlgebra.divexact(division_polynomialE(E, m, x, y), 2*y)
-        *(division_polynomialE(E, m + 2, x, y)*division_polynomialE(E, m - 1, x, y)^2
-        - division_polynomialE(E, m - 2, x, y)*division_polynomialE(E, m + 1, x, y)^2)
-    else m = div(n - 1, 2)
-        return division_polynomialE(E, m + 2, x, y)*division_polynomialE(E, m, x, y)^3 
-        - division_polynomialE(E, m - 1, x, y)*division_polynomialE(E, m + 1, x, y)^3
+    if mod(n, 2) == 1
+        m = n 
+        return AbstractAlgebra.divexact(division_polynomialE(E, m, x, y), 
+        division_polynomialE(E, 2, x, y))
     end
 end

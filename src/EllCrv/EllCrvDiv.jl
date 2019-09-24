@@ -13,7 +13,6 @@
 #
 ################################################################################
 
-# include("FieldsRings.jl")
 include("EllCrv.jl")
 
 ################################################################################
@@ -30,7 +29,7 @@ import AbstractAlgebra
 #
 ################################################################################
 
-export AbstractDivisor, EllCrvDivisor, Logarithm
+export AbstractDivisor, EllCrvDivisor, EllCrvModel, Logarithm
 export EllipticCurveDivisor, ord, assoc
 
 ################################################################################
@@ -39,52 +38,54 @@ export EllipticCurveDivisor, ord, assoc
 #
 ################################################################################
 
-abstract type AbstractDivisor{T, EllCrvPt, N} end
+abstract type AbstractDivisor{EllCrvPt} end
 
-# Formal linear combinations of ideals? Taking inspiration from
-# Macaulay2's Divisor Package...
-# const AbstractDivisorDict = Dict{Tuple{Array{T, 1}, Array{T, 1}, Bool}}() where T
-mutable struct EllCrvDivisor{T, EllCrvPt, N} <: AbstractDivisor{T, EllCrvPt, N}
+mutable struct EllCrvDivisor{EllCrvPt} <: AbstractDivisor{EllCrvPt}
     degree::Int
-    coeff::Array{T, 1}
-    points::Tuple{Vararg{P::EllCrvPt, N} where {P, N}}
-    # func_field_without_zero::FuncField
+    coeff::Array{Int, 1}
+    points::Tuple{Vararg{EllCrvPt, N} where N}
+    func_field_without_zero::AbstractAlgebra.Field
     rat_func::AbstractAlgebra.FieldElem
-    
-    # if assoc(rat_func::AbstractAlgebra.FieldElem, coeff::Array{T, 1}) 
-    # --> EllCrvDivisor
-    is_associated::Bool
+    principal::Bool
 
     # blowup(i::AbstractVarietyMap) --> AbstractVariety
     # if exceptionalDiv(blowup) --> EllCrvDivisor
-    is_exceptional::Bool
+    exceptional::Bool
 
     # if prod(coeff::Array{T, 1}) >= 0 
-    is_effective::Bool
+    effective::Bool
 
-    function EllCrvDivisor{T, EllCrvPt, N}(coeffs::Array{T, 1}, 
-        points::Tuple{Vararg{P::EllCrvPt, N} where {P, N}}, check::Bool = true) where 
-        {T, EllCrvPt, N}
+    function EllCrvDivisor{EllCrvPt}(coeffs::Array{Int, 1}, 
+        points::Tuple{Vararg{EllCrvPt, N} where N}, check::Bool = true) where 
+        EllCrvPt
         if check
-#=             if assoc(rat_func, coeffs, points)
-                ECD = new{T, P1,...}()
-                ECD = coeffs[1]*P1 ⊞...
-                ECD.is_associated = true =#
-            if prod(coeffs) >= 0
-                ECD = new{T, EllCrvPt, N}()
-                ECD.is_effective = true
+            if assoc(rat_func, coeffs, points)
+                ECD = new{EllCrvPt}()
+                ECD = ⊞(coeffs[1]×EllCrvPt...)
+                ECD.principal = true
+            elseif prod(coeffs) >= 0
+                ECD = new{EllCrvPt}()
+                ECD = ⊞(coeffs[1]×EllCrvPt...)
+                ECD.effective = true
             end
         else 
-            ECD = new{T, EllCrvPt, N}()
+            ECD = new{EllCrvPt}()
+            ECD = ⊞(coeffs[1]×EllCrvPt...)
         end
         return ECD
     end
 end
 
+mutable struct EllCrvModel
+    curve::EllCrv
+    point::EllCrvPt
+    divisor::EllCrvDivisor
+end
+
 # Logarithms of Divisors
 mutable struct Logarithm
     base_ec_model::EllCrvModel
-    base_ec_divisor::EllCrvDivisor
+    divisor::EllCrvDivisor
     #...
 end
 
@@ -94,10 +95,10 @@ end
 #
 ################################################################################
 
-function EllipticCurveDivisor(coeff::Array{T, 1}, 
-    points::Tuple{P1::EllCrvPt,...}, check::Bool = true) where {T, P1,...}
+function EllipticCurveDivisor(coeff::Array{Int, 1}, 
+    points::Tuple{Vararg{EllCrvPt, N} where N}, check::Bool = true)
     if check
-        ECD = EllCrvDivisor{T, P1,...}(coeff, points, check)
+        ECD = EllCrvDivisor{EllCrvPt}(coeff, points, check)
         return ECD
     end
 end
@@ -108,15 +109,19 @@ end
 #
 ################################################################################
 
-function ord{P1,..}(rat_func::AbstractAlgebra.FieldElem, 
-    points::Tuple{P1::EllCrvPt,...}) where {P1,...}
-    #...
+function ord(rat_func::AbstractAlgebra.FieldElem, 
+    points::Tuple{Vararg{EllCrvPt, N} where N})
+    
+    if AbstractAlgebra.denominator(rat_func) == 0
+        
+    end
+
     return
 end
 
-function assoc{T}(rat_func::AbstractAlgebra.FieldElem, 
-    coeff::Array{T, 1}, points::Tuple{P1::EllCrvPt,...}) where {T, P1,...}
+function assoc(rat_func::AbstractAlgebra.FieldElem, 
+    coeff::Array{Int, 1}, points::Tuple{Vararg{EllCrvPt, N} where N})
 
-    coeff = ord(rat_func)
+    coeff = ord(rat_func, points)
     return EllipticCurveDivisor(coeff, points, true)
 end

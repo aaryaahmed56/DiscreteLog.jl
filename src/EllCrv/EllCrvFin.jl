@@ -66,15 +66,16 @@ export order, order_via_schoof, rand_point, crypto_curve
 
 function rand_point(E::EllCrv)
     k = base_field(E)
+    (a4, a6) = a_invars(E)
 
     if E.short == false
-        error("Not for long form.")
+        error("Not implemented for long form.")
     end
 
     while true
 
         x = rand(k)
-        square = x^3 + E.coeff[4]*x + E.coeff[5]
+        square = x^3 + a4*x + a6
 
         a = AbstractAlgebra.issquare(square)
         if a[1] == true
@@ -92,7 +93,7 @@ end
 #
 ################################################################################
 
-function crypto_curve(r0::Union{Int128, BigInt}, k0::Int, h0::Int)
+function crypto_curve(r0::BigInt, k0::BigInt, h0::BigInt)
     if prod(r0, k0, h0) <= 0
         error("r0, k0, h0 must be positive integers.")
     end
@@ -101,17 +102,17 @@ function crypto_curve(r0::Union{Int128, BigInt}, k0::Int, h0::Int)
         error("Invalid input.")
     end
 
-    (Δ, p, r, k) = find_prime(r0, k0, h0)
+    (d, p, r, k) = find_prime(r0, k0, h0)
     
-    (E, G) = find_curve(Δ, p, r, k)
+    (E, G) = find_curve(d, p, r, k)
 
-    return (Δ, p, r, k, E, G)
+    return (d, p, r, k, E, G)
 end
 
-function find_prime(r0::Union{Int128, BigInt}, k0::Int, h0::Int)
-    print("Enter a rational prime p: ")
+function find_prime(r0::BigInt, k0::BigInt, h0::BigInt)
+    print("Enter a (rational) prime p: ")
     input = readline()
-    p = parse(T, chomp(input)) where T #TODO: Implement Rational Prime type
+    p = parse(BigInt, chomp(input))
     
     m = 50
     
@@ -124,6 +125,28 @@ function find_prime(r0::Union{Int128, BigInt}, k0::Int, h0::Int)
     end
 end
 
-function find_prime_delta_fixed(r0::Union{Int128, BigInt}, k0::Int, h0::Int)
+function find_prime_delta_fixed(r0::BigInt, k0::BigInt, h0::BigInt)
+    print("Enter a discriminant: ")
+    input = readline()
+    d = parse(BigInt, chomp(input))
+
+    abs_d = abs(d)
+    
     if k0 > 4
-        b = floor()
+        if mod(d, 8) == 1 || mod(abs_d, 8) == 7
+            b = floor(log2(4*r0))
+            i0 = 2^b
+            i1 = 2^(b + 1) - 1
+            interval = collect(BigInt, i0:i1)
+            
+            if find_prime_1_mod_8(r0, 4, d, interval)
+                return true
+            else
+                error("Unable to find prime.")
+            end
+        else
+            error("Discriminant must be congruent to 1 mod 8, 
+            or its norm congruent to 7 mod 8.")
+        end
+    elseif k0 > 2
+        if mod(d, 16) == 8 || 12

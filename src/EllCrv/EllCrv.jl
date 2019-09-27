@@ -190,7 +190,8 @@ function EllipticCurve(x::Array{T, 1}, check::Bool = true) where T
     return E
 end
 
-function (E::EllCrv{T})(coords::Tuple{Vararg{T, N} where N}, check::Bool = true) where T
+function (E::EllCrv{T})(coords::Tuple{Vararg{S, N} where N}, check::Bool = true) where 
+    {S, T}
     if length(coords) < 2
         error("Point must have at least two coordinates.")
     elseif length(coords) == 2
@@ -374,38 +375,45 @@ end
 function ⊞(P::EllCrvPt{T}, Q::EllCrvPt{T}) where T 
     parent(P) != parent(Q) && error("Points must live on the same curve.")
     coords = P.coord
+    E = parent(P)
     
     if length(coords) == 2
+        if isshort(E)
+
+            (a4, a6) = a_invars(E)
         
         # Is either P or Q the point at infinity?
-        if P.isinfinite
-            return Q
-        elseif Q.isinfinite
-            return P
-        end
-        
-        E = parent(P)
+            if P.isinfinite
+                return Q
+            elseif Q.isinfinite
+                return P
+            end
 
-        if P.coord[1] != Q.coord[1]
-            m = AbstractAlgebra.divexact(Q.coord[2] - P.coord[2], 
-            Q.coord[1] - P.coord[1])
+            if P.coord[1] != Q.coord[1]
+                m = AbstractAlgebra.divexact(Q.coord[2] - P.coord[2], 
+                Q.coord[1] - P.coord[1])
             
-            x = m^2 - P.coord[1] - Q.coord[1]
-            y = m*(P.coord[1] - x) - P.coord[2]
-        elseif P.coord[2] != Q.coord[2]
-            return infinity(E)
-        elseif P.coord[2] != 0
-            m = AbstractAlgebra.divexact(3*(P.coord[1])^2 + (E.coeff[1]), 
-            2*(P.coord[2]))
+                x = m^2 - P.coord[1] - Q.coord[1]
+                y = m*(P.coord[1] - x) - P.coord[2]
+
+                t = (x, y)
+            elseif P.coord[2] != Q.coord[2]
+                return infinity(E)
+            elseif P.coord[2] != 0
+                m = AbstractAlgebra.divexact(3*(P.coord[1])^2 + a4, 
+                2*(P.coord[2]))
             
-            x = m^2 - 2*(P.coord[1])
-            y = m*(P.coord[1] - x) - P.coord[2]
-            t = (x, y)
-        else
-            return infinity(E)
-        end
-        
+                x = m^2 - 2*(P.coord[1])
+                y = m*(P.coord[1] - x) - P.coord[2]
+            
+                t = (x, y)
+            else
+                return infinity(E)
+            end
         Erg = E(t, false)
+        else
+            error("For short form.")
+        end
     end
     return Erg
 end

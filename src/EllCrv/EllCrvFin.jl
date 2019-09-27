@@ -39,6 +39,7 @@
 #
 ################################################################################
 
+include("BigIntInterface.jl")
 include("EllCrv.jl")
 
 ################################################################################
@@ -88,7 +89,7 @@ end
 
 ################################################################################
 #
-#  Elliptic Curve Generator over Finite Fields
+#  Elliptic Curve Generator over Finite Fields (Naive implementation at first.)
 #  https://pdfs.semanticscholar.org/c60c/46a9ee6f90958f609f464723f6bf92835feb.pdf
 #
 ################################################################################
@@ -132,9 +133,9 @@ function find_prime_delta_fixed(r0::BigInt, k0::BigInt, h0::BigInt)
 
     abs_d = abs(d)
     
-    if k0 > 4
+    if k0 >= 4
         if mod(d, 8) == 1 || mod(abs_d, 8) == 7
-            b = floor(log2(4*r0))
+            b = BigInt(floor(log2(4*r0)))
             i0 = 2^b
             i1 = 2^(b + 1) - 1
             interval = collect(BigInt, i0:i1)
@@ -145,8 +146,55 @@ function find_prime_delta_fixed(r0::BigInt, k0::BigInt, h0::BigInt)
                 error("Unable to find prime.")
             end
         else
-            error("Discriminant must be congruent to 1 mod 8, 
+            error("Get discriminant congruent to 1 mod 8, 
             or its norm congruent to 7 mod 8.")
         end
-    elseif k0 > 2
+    elseif k0 >= 2
         if mod(d, 16) == 8 || 12
+            b = BigInt(floor(log2(r0*k0)))
+            i0 = 2^b
+            i1 = 2^(b + 1) - 1
+            interval = collect(BigInt, i0:i1)
+
+            if find_prime_0_mod_4(r0, k0, d, interval)
+                return true
+            else
+                error("Unable to find prime.")
+            end
+        else
+            error("Get discriminant congruent to 8 or 12 modulo 16.")
+        end
+    else
+        if mod(d, 8) == 5
+            b = BigInt(floor(log2(r0)))
+            i0 = 2^b
+            i1 = 2^(b + 1) - 1
+            interval = collect(BigInt, i0:i1)
+
+            if find_prime_5_mod_8(r0, 1, d, interval)
+                return true
+            else
+                error("Unable to find prime.")
+            end
+        else
+            error("Get discrimint congruent to 5 mod 8.")
+        end
+    end
+end
+
+function find_prime_0_mod_4(r0::BigInt, k0::BigInt, d::BigInt, 
+    interval::Array{BigInt, 1})
+    # Number of successive tested pairs (t, y).
+    # If not successful after T tries, init a new pair.
+    const T = 2000
+
+    # Bit of 2 in binary representation of t.
+    t_bit_1 = Int
+
+    abs_delta = SpBigInt(d)
+    
+    ###
+end
+
+
+

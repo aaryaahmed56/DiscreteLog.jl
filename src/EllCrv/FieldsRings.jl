@@ -64,13 +64,20 @@ export ExtField, NumField, Loc, LocElem, FuncField
 #
 ################################################################################
 
-mutable struct ExtField <: AbstractAlgebra.Field
+abstract type AbstractField{T} <: AbstractAlgebra.Field end
+mutable struct ExtField{T} <: AbstractField{T}
     degree::Int
+    base_field::AbstractAlgebra.Field
 end
 
-mutable struct NumField <: ExtField
-    is_primitive::Bool
-    primitive_element::AbstractAlgebra.NumFieldElem
+mutable struct NumField{T} <: AbstractAlgebra.SimpleNumField{T}
+   base_field::AbstractAlgebra.Field
+   pol::AbstractAlgebra.Poly{T}
+   S::Symbol
+   primitive::Bool
+   primitive_element::AbstractAlgebra.NumFieldElem
+
+   ###
 end
 
 mutable struct Loc{T} <: AbstractAlgebra.Ring
@@ -133,7 +140,7 @@ mutable struct LocElem{T} <: AbstractAlgebra.RingElem
 end
 
 # Function fields of curves.
-mutable struct FuncField <: Loc
+mutable struct FuncField{T} <: Loc{T}
     # The function field K[E] of the elliptic curve E 
     # consists of ratios of polynomials. Taking an 
     # elliptic curve E as an integral, regular scheme of 
@@ -143,7 +150,7 @@ mutable struct FuncField <: Loc
     base_curve::EllCrv
     generic_point::EllCrvPt
 
-    function FuncField()
+    function FuncField{T}()
 end
 
 ###############################################################################

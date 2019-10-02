@@ -65,8 +65,31 @@ export order, order_via_schoof, rand_point, crypto_curve
 #
 ################################################################################
 
+
+
+function issquare(x::Union{AbstractAlgebra.gfelem{Int32}, AbstractAlgebra.FinFieldElem})
+    k = parent(x)
+    S, t = AbstractAlgebra.PolynomialRing(k, "t", cached = false)
+
+    f = t^2 - x
+    fac = factor(f)
+
+    p = first(keys(fac.fac))
+
+    if fac[p] == 2
+        root = -coeff(p, 0)
+        return true, k(root)
+    elseif
+        length(fac) == 2
+        root = -coeff(p, 0)
+        return true, k(root)
+    else
+        return false, zero(k)
+    end
+end
+
 function rand_point(E::EllCrv)
-    k = base_field(E)
+    k = E.base_field
     (a4, a6) = a_invars(E)
 
     if E.short == false

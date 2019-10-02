@@ -215,11 +215,13 @@ end
 #  Field access/ Quotients
 #
 ################################################################################
-@inline function parenttype(::Type{AbstractAlgebra.FieldElem}) end
+
 @inline function parent(P::EllCrvPt) return P.parent end
 @inline function isinfinite(P::EllCrvPt) return P.isinfinite end
 @inline function isshort(E::EllCrv) return E.short end
 @inline function issimp(E::EllCrv) return E.simp end
+@inline function parenttype(::Type{Union{AbstractAlgebra.gfelem{Int32}, 
+    AbstractAlgebra.FieldElem}}) end
 
 @inline function base_field(E::EllCrv{T}) where T
     return E.base_field::parenttype(T)

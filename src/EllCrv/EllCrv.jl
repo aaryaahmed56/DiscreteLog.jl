@@ -56,13 +56,14 @@ issimp, ison_curve, j_invariant, ⊟, ⊞, ×
 #
 ################################################################################
 
-# Ancestral abstract type -- Abstract k-variety where k field.
+# Ancestral abstract type -- Abstract k-variety where k field 
+# (Type::Union{AbstractAlgebra.GFField{Int64}, AbstractAlgebra.Field}).
 abstract type AbstractVariety{T} end
 
 abstract type AbstractCurve{T} <: AbstractVariety{T} end
 
 mutable struct EllCrv{T} <: AbstractCurve{T}
-    base_field::AbstractAlgebra.Field
+    base_field::AbstractAlgebra.GFField{Int64}
     coeff::Array{T, 1}
 
     # General Weierstrass form invariants
@@ -220,8 +221,7 @@ end
 @inline function isinfinite(P::EllCrvPt) return P.isinfinite end
 @inline function isshort(E::EllCrv) return E.short end
 @inline function issimp(E::EllCrv) return E.simp end
-@inline function parenttype(::Type{Union{AbstractAlgebra.gfelem{Int32}, 
-    AbstractAlgebra.FieldElem}}) end
+@inline function parenttype(::Type{AbstractAlgebra.GFElem{Int64}}) end
 
 @inline function base_field(E::EllCrv{T}) where T
     return E.base_field::parenttype(T)
@@ -255,6 +255,53 @@ end
         t = (b2, b4, b6, b8)
         E.b_invars = t
         return t
+    end
+end
+
+################################################################################
+#
+#  String I/O
+#
+################################################################################
+
+function show(io::IO, E::EllCrv)
+    if E.short
+        print(io, "Elliptic curve with equation y^2 = x^3")
+        if !iszero(E.coeff[4])
+            print(io, " + $(E.coeff[4])*x")
+        end
+        if !iszero(E.coeff[5])
+            print(io, " + $(E.coeff[5])")
+        end
+        print(io, "\n")
+    if E.simp
+        print(io, "Elliptic curve with equation y^2 + x*y = x^3")
+        if !iszero(E.coeff[2])
+            print(io, " + $(E.coeff[2])*x^2")
+        end
+        if !iszero(E.coeff[5])
+            print(io, " + $(E.coeff[5])")
+        end
+        print(io, "\n")
+    else
+        print(io, "Elliptic Curve with equation y^2")
+        if !iszero(E.coeff[1])
+            print(io, " + $(E.coeff[1])*x*y")
+        end
+        if !iszero(E.coeff[3])
+            print(io, " + $(E.coeff[3])*y")
+        end
+        print(io, " = x^3")
+        if !iszero(E.coeff[2])
+            print(io, " + $(E.coeff[2])*x^2")
+        end
+        if !iszero(E.coeff[4])
+            print(io, " + $(E.coeff[4])*x")
+        end
+        if !iszero(E.coeff[5])
+            print(io, " + $(E.coeff[5])")
+        end
+        print(io, "\n")
     end
 end
 

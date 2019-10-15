@@ -1,12 +1,21 @@
-struct SpBigInt <: Signed
-    
-    @inline function assign_zero() end
-    @inline function assign_one() end
-    @inline function assign(Union{::Int64, ::Int128, 
-        ::Float32, ::Float64}) end
-end
+################################################################################
+#
+#  BigInt
+#
+################################################################################
 
-# int_to_bytes(::BigInt) --> Array{UInt8}
+@inline function assign_zero() end::BigInt
+@inline function assign_one() end
+@inline function assign(Union{::Int64, ::Int128, 
+    ::Float32, ::Float64}) end
+
+################################################################################
+#
+#  Conversions
+#
+################################################################################
+
+# Convert BigInt to Hex Array
 function int_to_bytes(x::BigInt)
     n_bytes_with_zeros = x.size*sizeof(Sys.WORD_SIZE)
     uint8_ptr = convert(Ptr{UInt8}, x.d)
@@ -42,7 +51,7 @@ function int_to_bytes(x::BigInt)
     return result
 end
 
-# bytes_to_big(x::Array{UInt8, 1}) --> BigInt
+# Convert Hex Array to BigInt
 function bytes_to_big(x::Array{UInt8, 1})
     hex = bytes2hex(x)
     return parse(BigInt, hex, base=16)

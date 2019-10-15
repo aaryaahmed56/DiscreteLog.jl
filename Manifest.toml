@@ -2,9 +2,9 @@
 
 [[AbstractAlgebra]]
 deps = ["InteractiveUtils", "LinearAlgebra", "Markdown", "Random", "SparseArrays", "Test"]
-git-tree-sha1 = "e1f0be8eeee8f842b0fcd9df5e6545c2d81b1d17"
+git-tree-sha1 = "d18c2a9f5b8938df682450aa0b41cf1b2a26b58e"
 uuid = "c3fe647b-3220-5bb0-a1ea-a7954cac585d"
-version = "0.6.0"
+version = "0.7.0"
 
 [[Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
@@ -32,9 +32,9 @@ uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[JuliaInterpreter]]
 deps = ["CodeTracking", "InteractiveUtils", "Random", "UUIDs"]
-git-tree-sha1 = "5450b881f1adaec498cd7facf05abdf57722618b"
+git-tree-sha1 = "5bb6a8b09d881c1cbe39bd8135667ed5978168e9"
 uuid = "aa1ae85d-cabe-5617-a682-6adf51b2e16a"
-version = "0.7.3"
+version = "0.7.4"
 
 [[LibGit2]]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
@@ -89,9 +89,9 @@ version = "0.5.2"
 
 [[Revise]]
 deps = ["CodeTracking", "Distributed", "FileWatching", "JuliaInterpreter", "LibGit2", "LoweredCodeUtils", "OrderedCollections", "Pkg", "REPL", "UUIDs", "Unicode"]
-git-tree-sha1 = "2e5e1ec94098cd4866ba157be54f7e166f1c56d5"
+git-tree-sha1 = "301706196827bdcc045658fc6df3e52fd3d76f83"
 uuid = "295af30f-e4ad-537b-8983-00126c2a3abe"
-version = "2.2.0"
+version = "2.2.2"
 
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"

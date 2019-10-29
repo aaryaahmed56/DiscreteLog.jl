@@ -2,9 +2,9 @@
 
 [[AbstractAlgebra]]
 deps = ["InteractiveUtils", "LinearAlgebra", "Markdown", "Random", "SparseArrays", "Test"]
-git-tree-sha1 = "d18c2a9f5b8938df682450aa0b41cf1b2a26b58e"
+git-tree-sha1 = "da0bf98d73f2f34c35d58981fcf139f16749a394"
 uuid = "c3fe647b-3220-5bb0-a1ea-a7954cac585d"
-version = "0.7.0"
+version = "0.7.1"
 
 [[Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"

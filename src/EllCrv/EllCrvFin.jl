@@ -39,8 +39,9 @@
 #
 ################################################################################
 
-include("BigIntInterface.jl")
 include("EllCrv.jl")
+include("../src/Misc/BigIntInterface.jl")
+include("../src/Misc/PolyFac.jl")
 
 ################################################################################
 #
@@ -218,6 +219,3 @@ function find_prime_0_mod_4(r0::BigInt, k0::BigInt, d::BigInt,
     
     ###
 end
-
-
-

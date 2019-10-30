@@ -274,7 +274,7 @@ function show(io::IO, E::EllCrv)
             print(io, " + $(E.coeff[5])")
         end
         print(io, "\n")
-    if E.simp
+    elseif E.simp
         print(io, "Elliptic curve with equation y^2 + x*y = x^3")
         if !iszero(E.coeff[2])
             print(io, " + $(E.coeff[2])*x^2")

@@ -1,13 +1,13 @@
 ################################################################################
 #
-#  BigInt
+#  Inline Bitwise Assignment Methods for BigInt
 #
 ################################################################################
 
 @inline function assign_zero() end::BigInt
 @inline function assign_one() end
 @inline function assign(Union{::Int64, ::Int128, 
-    ::Float32, ::Float64}) end
+    ::BigInt, ::Float32, ::Float64}) end
 
 ################################################################################
 #

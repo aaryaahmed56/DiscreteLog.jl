@@ -17,14 +17,6 @@ include("EllCrv.jl")
 
 ################################################################################
 #
-#  Imports
-#
-################################################################################
-
-import AbstractAlgebra
-
-################################################################################
-#
 #  Exports
 #
 ################################################################################
@@ -38,13 +30,12 @@ export AbstractVarietyMap, AbstractCurveMap, EllCrvBlowup, EllCrvMap
 ################################################################################
 Map(::Type{T}) where T <: AbstractAlgebra.Map = AbstractAlgebra.Map(T)
 
-mutable struct AbstractVarietyMap <: AbstractAlgebra.Map{AbstractVariety, 
-    AbstractVariety}
+mutable struct AbstractVarietyMap{T} <: AbstractAlgebra.Map{AbstractVariety, AbstractVariety}
     source::AbstractVariety
     target::AbstractVariety
 
     function AbstractVarietyMap(X::AbstractVariety, Y::AbstractVariety)
-        z = new(source, target)
+        z = new(X, Y)
         return z
     end
 end

@@ -49,7 +49,6 @@ include("../src/Misc/PolyFac.jl")
 #
 ################################################################################
 
-import AbstractAlgebra
 using Random
 
 ################################################################################
@@ -73,15 +72,16 @@ function issquare(x::Union{AbstractAlgebra.gfelem{Int32}, AbstractAlgebra.FinFie
     S, t = AbstractAlgebra.PolynomialRing(k, "t", cached = false)
 
     f = t^2 - x
-    fac = factor(f)
+    
+    # Distinct Degree Factorization for now.
+    fac = factor_ddf(f)
 
     p = first(keys(fac.fac))
 
     if fac[p] == 2
-        root = -coeff(p, 0)
+        root = -AbstractAlgebra.coeff(p, 0)
         return true, k(root)
-    elseif
-        length(fac) == 2
+    elseif length(fac) == 2
         root = -coeff(p, 0)
         return true, k(root)
     else
@@ -215,7 +215,7 @@ function find_prime_0_mod_4(r0::BigInt, k0::BigInt, d::BigInt,
     # Bit of 2 in binary representation of t.
     t_bit_1 = Int
 
-    abs_delta = SpBigInt(d)
+    abs_delta = assign(d)
     
     ###
 end

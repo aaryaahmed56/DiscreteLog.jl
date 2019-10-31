@@ -41,10 +41,14 @@ end
 
 include("../src/ElimProcedures/Deg32Elim.jl")
 include("../src/ElimProcedures/Deg43Elim.jl")
+
 include("../src/EllCrv/EllCrv.jl")
 include("../src/EllCrv/EllCrvDiv.jl")
+include("../src/EllCrv/EllCrvFin.jl")
 include("../src/EllCrv/EllCrvMap.jl")
-include("../src/EllCrv/EllCrvModel.jl")
-include("../src/EllCrv/FieldsRings.jl")
+
+include("../src/Misc/BigIntInterface.jl")
+include("../src/Misc/FieldsRings.jl")
+include("../src/Misc/PolyFac.jl")
 
 end

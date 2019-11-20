@@ -2,34 +2,7 @@
 #
 #          EllCrv/EllCrv.jl : Elliptic curves over general fields
 #
-# Copyright (c) 2015, 2016: Claus Fieker, Tommy Hofmann
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-# * Redistributions of source code must retain the above copyright notice, this
-#   list of conditions and the following disclaimer.
-#
-# * Redistributions in binary form must reproduce the above copyright notice,
-#   this list of conditions and the following disclaimer in the documentation
-#   and/or other materials provided with the distribution.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-# (C) 2016 Tommy Hofmann
-# (C) 2016 Robin Ammon
-# (C) 2016 Sofia Brenner
-#
-################################################################################
+################################################################################j
 
 
 ################################################################################
@@ -393,7 +366,7 @@ end
 #
 ################################################################################
 
-function ⊟(P::EllCrvPt{T}) where T
+function -(P::EllCrvPt{T}) where T
     E = parent(P)
     coords = P.coord
     if isinfinite(P)
@@ -421,7 +394,7 @@ end
 # P := [P[1]:P[2]:P[3]], Q := [Q[1]:Q[2]:Q[3]] or 
 # affine coordinates P:= (P[1], P[2]), Q := (Q[1], Q[2])
 
-function ⊞(P::EllCrvPt{T}, Q::EllCrvPt{T}) where T 
+function +(P::EllCrvPt{T}, Q::EllCrvPt{T}) where T 
     parent(P) != parent(Q) && error("Points must live on the same curve.")
     coords = P.coord
     E = parent(P)
@@ -469,10 +442,11 @@ end
 
 ################################################################################
 #
-#  Window Non-adjacent Form (for Scalar Mult.)
+#  Scalar multiplication
 #
 ################################################################################
 
+# Window Non-Adjacent Form
 function NAF_dw(d::Int, w::Int)
     l = 0
     k = Int[]
@@ -493,52 +467,52 @@ function NAF_dw(d::Int, w::Int)
     end
 end
 
-################################################################################
-#
-#  Scalar multiplication
-#
-################################################################################
+# Efficient affine point quintupling
+# for simple Weierstrass form Elliptic 
+# Curves over binary fields.
+# https://eprint.iacr.org/2017/840.pdf
+function quint_mult(n::Int, P::EllCrvPt)
+    E = parent(P)
+    coords = P.coord
+    F = base_field(E)
 
+    if (!(issimp(E) == true) || !(AbstractAlgebra.characteristic(F) == 2 
+        || n == 5))
+        error("Must be an elliptic curve of short form, over a field of char. 2, 
+               with the scalar n == 5.")
+    end
+    
+    xP = coords[1]
+    yP = coords[2]
+
+    (a1, a2, a6) = a_invars(E)
+
+    A = a2
+    B = a6
+
+    α = xP^4 + xP^3 + B
+    β = α^2 + xP^2*(xP^4 + B)
+    γ = α^2*(xP^4 + B) + xP^3*β
+
+    ρ = AbstractAlgebra.divexact(xP^3*β, γ)
+                
+    x5P = xP + ρ + ρ^2
+    y5P = yP + xP + (x5P + xP)*(ρ + xP^2 + A) + 
+    
+    AbstractAlgebra.divexact(xP*β*α^2*(β + 
+    (xP^4 + B)*(xP^4 + B + yP^2 + xP^2)), γ^2)
+
+    FiveP = E((x5P, y5P), false)
+    
+    return FiveP
+end
+
+# General procedure
 function ×(n::Int, P::EllCrvPt)
     E = parent(P)
     coords = P.coord
     O = infinity(E)
     F = base_field(E)
-
-    if issimp(E) == true
-        if F <: AbstractAlgebra.GFField && 
-            AbstractAlgebra.characteristic(F) == 2
-            
-            # Efficient affine point quintupling
-            # for simple Weierstrass form Elliptic 
-            # Curves over binary fields.
-            # https://eprint.iacr.org/2017/840.pdf
-            if n == 5
-                xP = coords[1]
-                yP = coords[2]
-
-                (a1, a2, a6) = a_invars(E)
-
-                A = a2
-                B = a6
-
-                α = xP^4 + xP^3 + B
-                β = α^2 + xP^2*(xP^4 + B)
-                γ = α^2*(xP^4 + B) + xP^3*β
-
-                ρ = AbstractAlgebra.divexact(xP^3*β, γ)
-                
-                x5P = xP + ρ + ρ^2
-                y5P = yP + xP + (x5P + xP)*(ρ + xP^2 + A) + 
-                AbstractAlgebra.divexact(xP*β*α^2*(β + 
-                (xP^4 + B)*(xP^4 + B + yP^2 + xP^2)), γ^2)
-
-                FiveP = E((x5P, y5P), false)
-                
-                return FiveP
-            end
-        end
-    end
 
     if n >= 0
         a = n
@@ -548,17 +522,21 @@ function ×(n::Int, P::EllCrvPt)
 
     # Double and add
     while a != 0
-      if mod(a,2) == 0
-        a = div(a,2)
-        P = P ⊞ P
+      if mod(a, 2) == 0
+        a = div(a, 2)
+        P = P + P
+      elseif (mod(a, 5) == 0 && issimp(E) == true 
+              && AbstractAlgebra.characteristic(F) == 2)
+        a = div(a, 5)
+        P = quint_mult(a, P)
       else
         a = a - 1
-        O = O ⊞ P
+        O = O - P
       end
     end
   
     if n < 0
-      P = ⊟(P)
+      P = -P
     end
   
     return O

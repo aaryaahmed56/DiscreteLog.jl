@@ -1,4 +1,3 @@
-  
 ################################################################################
 #
 #          EllCrv/EllCrvDiv.jl : Divisors on Elliptic Curves and Logarithms of 
@@ -53,16 +52,16 @@ mutable struct EllCrvDivisor{EllCrvPt} <: AbstractDivisor{EllCrvPt}
         if check
             if assoc(rat_func, coeffs, points)
                 ECD = new{EllCrvPt}()
-                ECD = ⊞(coeffs[1]×EllCrvPt...)
+                ECD = +(coeffs[1]*EllCrvPt...)
                 ECD.principal = true
             elseif prod(coeffs) >= 0
                 ECD = new{EllCrvPt}()
-                ECD = ⊞(coeffs[1]×EllCrvPt...)
+                ECD = +(coeffs[1]*EllCrvPt...)
                 ECD.effective = true
             end
         else 
             ECD = new{EllCrvPt}()
-            ECD = ⊞(coeffs[1]×EllCrvPt...)
+            ECD = +(coeffs[1]*EllCrvPt...)
         end
         return ECD
     end

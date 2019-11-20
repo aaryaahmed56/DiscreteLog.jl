@@ -28,6 +28,7 @@ export AbstractVarietyMap, AbstractCurveMap, EllCrvBlowup, EllCrvMap
 #  Abstract Types/Structs
 #
 ################################################################################
+
 Map(::Type{T}) where T <: AbstractAlgebra.Map = AbstractAlgebra.Map(T)
 
 mutable struct AbstractVarietyMap{T} <: AbstractAlgebra.Map{AbstractVariety, AbstractVariety}
